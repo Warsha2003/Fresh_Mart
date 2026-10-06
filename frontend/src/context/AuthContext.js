@@ -24,21 +24,35 @@ export const AuthProvider = ({ children }) => {
       const storedUser = await AsyncStorage.getItem('@freshmart_user');
 
       if (storedToken && storedUser) {
+        const restoredUser = JSON.parse(storedUser);
+        const normalizedUser = {
+          ...restoredUser,
+          role: restoredUser.role || 'customer',
+        };
+
         setToken(storedToken);
-        setUser(JSON.parse(storedUser));
+        setUser(normalizedUser);
 
         // Background verification to keep profile fresh
         client
           .get('/auth/me', { headers: { Authorization: `Bearer ${storedToken}` } })
           .then((res) => {
             if (res.data?.user) {
-              setUser(res.data.user);
-              AsyncStorage.setItem('@freshmart_user', JSON.stringify(res.data.user));
+              const verifiedUser = {
+                ...res.data.user,
+                role: res.data.user.role || normalizedUser.role || 'customer',
+              };
+              setUser(verifiedUser);
+              AsyncStorage.setItem('@freshmart_user', JSON.stringify(verifiedUser));
             }
           })
-          .catch(() => {
-            // If token expired, clear session
-            logout();
+          .catch((error) => {
+            // Only clear session if token is explicitly invalid or expired (401)
+            if (error.response?.status === 401 || error.status === 401) {
+              logout();
+            } else {
+              console.warn('[AuthContext] Background token refresh skipped (offline or network error)');
+            }
           });
       }
     } catch (error) {
@@ -48,28 +62,47 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (email, password) => {
-    const response = await client.post('/auth/login', { email, password });
+  const login = async (email, password, role) => {
+    const payload = { email, password };
+    if (role) {
+      payload.role = role;
+    }
+    const response = await client.post('/auth/login', payload);
     const { token: receivedToken, user: receivedUser } = response.data;
+    const finalUser = {
+      ...receivedUser,
+      role: receivedUser.role || role || 'customer',
+    };
 
     await AsyncStorage.setItem('@freshmart_token', receivedToken);
-    await AsyncStorage.setItem('@freshmart_user', JSON.stringify(receivedUser));
+    await AsyncStorage.setItem('@freshmart_user', JSON.stringify(finalUser));
 
     setToken(receivedToken);
-    setUser(receivedUser);
-    return receivedUser;
+    setUser(finalUser);
+    return finalUser;
   };
 
-  const register = async (name, email, password, phone) => {
-    const response = await client.post('/auth/register', { name, email, password, phone });
+  const register = async (name, email, password, phone, role) => {
+    const payload = {
+      name,
+      email,
+      password,
+      phone,
+      role: role || 'customer',
+    };
+    const response = await client.post('/auth/register', payload);
     const { token: receivedToken, user: receivedUser } = response.data;
+    const finalUser = {
+      ...receivedUser,
+      role: receivedUser.role || role || 'customer',
+    };
 
     await AsyncStorage.setItem('@freshmart_token', receivedToken);
-    await AsyncStorage.setItem('@freshmart_user', JSON.stringify(receivedUser));
+    await AsyncStorage.setItem('@freshmart_user', JSON.stringify(finalUser));
 
     setToken(receivedToken);
-    setUser(receivedUser);
-    return receivedUser;
+    setUser(finalUser);
+    return finalUser;
   };
 
   const logout = async () => {

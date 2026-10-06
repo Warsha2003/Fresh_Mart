@@ -1,7 +1,7 @@
 /**
  * RootNavigator
  * Controls application routing between Authentication stack, Customer Main stack,
- * and Delivery Partner stack.
+ * Delivery Partner stack, and Shop Owner dashboard.
  */
 import React from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
@@ -17,6 +17,11 @@ import DeliveryTabs from './DeliveryTabs';
 // Auth Screens
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
+import SplashScreen from '../screens/auth/SplashScreen';
+import RoleSelectScreen from '../screens/auth/RoleSelectScreen';
+
+// Owner Screens
+import OwnerDashboardScreen from '../screens/owner/OwnerDashboardScreen';
 
 // Checkout Scope Screens (Screens 07 - 10)
 import TimeSlotScreen from '../screens/checkout/TimeSlotScreen';
@@ -36,7 +41,7 @@ import DeliveryCompleteScreen from '../screens/delivery/DeliveryCompleteScreen';
 const Stack = createNativeStackNavigator();
 
 const RootNavigator = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
 
   if (isLoading) {
     return (
@@ -46,20 +51,71 @@ const RootNavigator = () => {
     );
   }
 
+  const role = user?.role || 'customer';
+
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
         {!isAuthenticated ? (
           // Auth Stack
           <>
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="Register" component={RegisterScreen} />
+            <Stack.Screen
+              name="SplashB"
+              component={SplashScreen}
+              initialParams={{ variant: 'B' }}
+            />
+            <Stack.Screen
+              name="SplashA"
+              component={SplashScreen}
+              initialParams={{ variant: 'A' }}
+            />
+            <Stack.Screen
+              name="SplashC"
+              component={SplashScreen}
+              initialParams={{ variant: 'C' }}
+            />
+            <Stack.Screen name="RoleSelect" component={RoleSelectScreen} />
+            <Stack.Screen
+              name="Login"
+              component={LoginScreen}
+              initialParams={{ role: 'customer' }}
+            />
+            <Stack.Screen
+              name="Register"
+              component={RegisterScreen}
+              initialParams={{ role: 'customer' }}
+            />
+            <Stack.Screen
+              name="DeliveryLogin"
+              component={LoginScreen}
+              initialParams={{ role: 'delivery' }}
+            />
+            <Stack.Screen
+              name="DeliveryRegister"
+              component={RegisterScreen}
+              initialParams={{ role: 'delivery' }}
+            />
+            <Stack.Screen
+              name="OwnerLogin"
+              component={LoginScreen}
+              initialParams={{ role: 'owner' }}
+            />
+            <Stack.Screen
+              name="OwnerRegister"
+              component={RegisterScreen}
+              initialParams={{ role: 'owner' }}
+            />
           </>
         ) : (
-          // Main Application Stack
+          // Main Application Stack - Routes directly to role-specific entry point
           <>
-            {/* Customer Flow */}
-            <Stack.Screen name="MainTabs" component={BottomTabs} />
+            {role === 'delivery' ? (
+              <Stack.Screen name="DeliveryTabs" component={DeliveryTabs} />
+            ) : role === 'owner' ? (
+              <Stack.Screen name="OwnerDashboard" component={OwnerDashboardScreen} />
+            ) : (
+              <Stack.Screen name="MainTabs" component={BottomTabs} />
+            )}
             <Stack.Screen name="TimeSlot" component={TimeSlotScreen} />
             <Stack.Screen name="Payment" component={PaymentScreen} />
             <Stack.Screen
@@ -70,7 +126,6 @@ const RootNavigator = () => {
             <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />
 
             {/* Delivery Partner Flow (Screens 21 to 25) */}
-            <Stack.Screen name="DeliveryTabs" component={DeliveryTabs} />
             <Stack.Screen name="DeliveryDashboard" component={DeliveryDashboardScreen} />
             <Stack.Screen name="DeliveryAlert" component={DeliveryAlertScreen} />
             <Stack.Screen name="DeliveryOrderDetails" component={DeliveryOrderDetailsScreen} />

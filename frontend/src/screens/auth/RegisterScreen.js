@@ -1,207 +1,241 @@
-/**
- * RegisterScreen
- * Quick registration screen for viva demonstration and testing.
- */
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
   StyleSheet,
+  Text,
   TouchableOpacity,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
+  View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../../theme/colors';
-import AppButton from '../../components/AppButton';
+import AuthScreenLayout from '../../components/AuthScreenLayout';
+import InputField from '../../components/InputField';
+import PrimaryButton from '../../components/PrimaryButton';
+import RoleChip from '../../components/RoleChip';
+import theme from '../../theme/theme';
 import { useAuth } from '../../context/AuthContext';
 
-const RegisterScreen = ({ navigation }) => {
+const RegisterScreen = ({ navigation, route }) => {
+  const role = route.params?.role || 'customer';
+  const isOwner = role === 'owner';
+  const isDelivery = role === 'delivery';
   const { register } = useAuth();
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('+94 77 123 4567');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
+  const loginRoute = isOwner ? 'OwnerLogin' : isDelivery ? 'DeliveryLogin' : 'Login';
+
+  const clearFieldError = (field) => {
+    setErrors((current) => ({ ...current, [field]: undefined, form: undefined }));
+  };
+
+  const validate = () => {
+    const nextErrors = {};
+    if (!name.trim()) nextErrors.name = 'Name is required.';
+    if (!phone) nextErrors.phone = 'Mobile number is required.';
+    else if (!/^\d{9}$/.test(phone)) nextErrors.phone = 'Enter a 9-digit Sri Lankan mobile number.';
+    if (!email.trim()) nextErrors.email = 'Email is required.';
+    else if (!/^\S+@\S+\.\S+$/.test(email.trim())) nextErrors.email = 'Enter a valid email address.';
+    if (!password) nextErrors.password = 'Password is required.';
+    else if (password.length < 6) nextErrors.password = 'Password must be at least 6 characters.';
+    if (!confirmPassword) nextErrors.confirmPassword = 'Please confirm your password.';
+    else if (password !== confirmPassword) nextErrors.confirmPassword = 'Passwords do not match.';
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
 
   const handleRegister = async () => {
-    if (!name.trim() || !email.trim() || !password.trim()) {
-      Alert.alert('Required Fields', 'Please fill in all required fields.');
-      return;
-    }
-    if (password.length < 6) {
-      Alert.alert('Invalid Password', 'Password must be at least 6 characters.');
-      return;
-    }
+    if (!validate()) return;
 
     try {
       setLoading(true);
-      await register(name.trim(), email.trim(), password, phone.trim());
+      await register(name.trim(), email.trim(), password, `+94 ${phone}`, role);
     } catch (error) {
-      Alert.alert('Registration Failed', error.message || 'Could not create account.');
+      setErrors({ form: error.message || 'Could not create your account. Please try again.' });
     } finally {
       setLoading(false);
     }
   };
 
+  const title = isOwner
+    ? 'Register your shop'
+    : isDelivery
+      ? 'Become a delivery partner'
+      : 'Create your account';
+  const subtitle = isOwner
+    ? 'Manage inventory, orders & statistics.'
+    : isDelivery
+      ? 'Join FreshMart and start earning.'
+      : 'Order fresh groceries in a few taps.';
+
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Create your account</Text>
-          <Text style={styles.cardSubtitle}>Start ordering fresh groceries today</Text>
+    <AuthScreenLayout>
+      {(isOwner || isDelivery) && (
+        <RoleChip
+          icon={isOwner ? 'storefront-outline' : 'bicycle-outline'}
+          label={isOwner ? 'Shop Owner' : 'Delivery Partner'}
+        />
+      )}
+      <View style={styles.heading}>
+        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.subtitle}>{subtitle}</Text>
+      </View>
 
-          <Text style={styles.inputLabel}>Full Name</Text>
-          <View style={styles.inputWrapper}>
-            <Ionicons name="person-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. Kamal Perera"
-              placeholderTextColor={colors.textLight}
-              value={name}
-              onChangeText={setName}
-            />
-          </View>
+      <InputField
+        error={errors.name}
+        icon="person-outline"
+        label="Name"
+        onChangeText={(value) => {
+          setName(value);
+          clearFieldError('name');
+        }}
+        placeholder="Full name"
+        value={name}
+      />
+      <InputField
+        error={errors.phone}
+        icon="call-outline"
+        keyboardType="number-pad"
+        label="Mobile Number"
+        maxLength={9}
+        onChangeText={(value) => {
+          setPhone(value.replace(/\D/g, '').slice(0, 9));
+          clearFieldError('phone');
+        }}
+        placeholder="77 xxx xxxx"
+        prefix="+94"
+        value={phone}
+      />
+      <InputField
+        autoCapitalize="none"
+        error={errors.email}
+        icon="mail-outline"
+        keyboardType="email-address"
+        label={isOwner ? 'Owner Email' : 'Email'}
+        onChangeText={(value) => {
+          setEmail(value);
+          clearFieldError('email');
+        }}
+        placeholder="you@example.com"
+        value={email}
+      />
+      <InputField
+        error={errors.password}
+        icon="lock-closed-outline"
+        label="Password"
+        onChangeText={(value) => {
+          setPassword(value);
+          clearFieldError('password');
+        }}
+        placeholder="At least 6 characters"
+        secureTextEntry
+        value={password}
+      />
+      <InputField
+        error={errors.confirmPassword}
+        icon="lock-closed-outline"
+        label="Confirm Password"
+        onChangeText={(value) => {
+          setConfirmPassword(value);
+          clearFieldError('confirmPassword');
+        }}
+        placeholder="Re-enter your password"
+        secureTextEntry
+        value={confirmPassword}
+      />
 
-          <Text style={styles.inputLabel}>Email Address</Text>
-          <View style={styles.inputWrapper}>
-            <Ionicons name="mail-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. kamal.perera@gmail.com"
-              placeholderTextColor={colors.textLight}
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
-          </View>
+      <PrimaryButton
+        loading={loading}
+        onPress={handleRegister}
+        title={isOwner ? 'Register Shop' : isDelivery ? 'Join as Delivery Partner' : 'Create Account'}
+        style={styles.primaryButton}
+      />
 
-          <Text style={styles.inputLabel}>Mobile Number</Text>
-          <View style={styles.inputWrapper}>
-            <Ionicons name="call-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="+94 77 123 4567"
-              placeholderTextColor={colors.textLight}
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-            />
-          </View>
-
-          <Text style={styles.inputLabel}>Password</Text>
-          <View style={styles.inputWrapper}>
-            <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="At least 6 characters"
-              placeholderTextColor={colors.textLight}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-          </View>
-
-          <AppButton
-            title="Create Account"
-            onPress={handleRegister}
-            loading={loading}
-            style={styles.registerBtn}
-          />
-
-          <View style={styles.footerRow}>
-            <Text style={styles.footerText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.loginLink}>Sign In</Text>
-            </TouchableOpacity>
-          </View>
+      {!!errors.form && (
+        <View accessibilityRole="alert" style={styles.errorBox}>
+          <Ionicons name="alert-circle-outline" size={17} color={theme.colors.danger} />
+          <Text style={styles.errorText}>{errors.form}</Text>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      )}
+
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>Already have an account? </Text>
+        <TouchableOpacity
+          accessibilityRole="button"
+          onPress={() => navigation.navigate(loginRoute, { role })}
+        >
+          <Text style={styles.footerLink}>Login</Text>
+        </TouchableOpacity>
+      </View>
+      {(isOwner || isDelivery) && (
+        <Text style={styles.apiNote}>
+          {isOwner
+            ? 'Shop registration is connected to the FreshMart Owner account system.'
+            : 'Delivery partner registration is connected to the FreshMart Delivery system.'}
+        </Text>
+      )}
+    </AuthScreenLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
+  heading: {
+    alignItems: 'center',
+    marginBottom: 14,
   },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 20,
-  },
-  card: {
-    backgroundColor: colors.card,
-    borderRadius: 20,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  cardTitle: {
-    fontSize: 20,
+  title: {
+    color: theme.colors.text,
+    fontSize: 19,
     fontWeight: '700',
-    color: colors.text,
+    textAlign: 'center',
   },
-  cardSubtitle: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginBottom: 20,
+  subtitle: {
+    color: theme.colors.muted,
+    fontSize: 12,
+    marginTop: 3,
+    textAlign: 'center',
+  },
+  primaryButton: {
     marginTop: 2,
   },
-  inputLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 6,
-  },
-  inputWrapper: {
+  errorBox: {
+    alignItems: 'flex-start',
+    backgroundColor: theme.colors.dangerSurface,
+    borderRadius: 10,
     flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 48,
-    marginBottom: 14,
-    backgroundColor: '#FAFBFB',
+    gap: 7,
+    marginTop: 10,
+    padding: 10,
   },
-  inputIcon: {
-    marginRight: 8,
-  },
-  input: {
+  errorText: {
+    color: theme.colors.danger,
     flex: 1,
-    fontSize: 14,
-    color: colors.text,
+    fontSize: 11,
+    lineHeight: 16,
   },
-  registerBtn: {
-    marginTop: 8,
-  },
-  footerRow: {
+  footer: {
+    alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 18,
+    marginTop: 13,
   },
   footerText: {
-    fontSize: 14,
-    color: colors.textSecondary,
+    color: theme.colors.muted,
+    fontSize: 12,
   },
-  loginLink: {
-    fontSize: 14,
+  footerLink: {
+    color: theme.colors.primary,
+    fontSize: 12,
     fontWeight: '700',
-    color: colors.primary,
+  },
+  apiNote: {
+    color: theme.colors.muted,
+    fontSize: 10,
+    lineHeight: 15,
+    marginTop: 10,
+    textAlign: 'center',
   },
 });
 

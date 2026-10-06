@@ -6,7 +6,9 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "seed": "node src/seed/seedSlots.js"
+    "seed": "node src/seed/seedSlots.js",
+    "ip": "node scripts/get-ip.js",
+    "tunnel": "npx localtunnel --port 5000"
   },
   "keywords": ["freshmart", "express", "mongodb", "rest-api"],
   "author": "FreshMart Team",

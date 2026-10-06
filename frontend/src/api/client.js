@@ -1,21 +1,24 @@
 /**
  * Axios API Client Configuration
  * 
- * IMPORTANT FOR VIVA / DEMO:
- * When testing on a physical phone with Expo Go, change API_BASE_URL to your laptop's Wi-Fi IP.
- * Example: 'http://192.168.8.100:5000/api'
- * For Android Emulator: 'http://10.0.2.2:5000/api'
- * For iOS Simulator or Web: 'http://localhost:5000/api'
+ * Base URL is read from frontend/.env via EXPO_PUBLIC_API_URL.
+ * Update your laptop Wi-Fi IPv4 in frontend/.env whenever your network changes.
  */
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// >>> SINGLE CONSTANT: EDIT YOUR LAPTOP IP HERE <<<
-export const API_BASE_URL = 'http://192.168.8.100:5000/api';
+// Read API URL from Expo environment variable (fallback to current Wi-Fi LAN IP, never localhost)
+export const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL || 'http://192.168.8.102:5000/api';
+
+// Small helper that logs the final base URL in development
+if (__DEV__) {
+  console.log('[API Client] Base URL configured as:', API_BASE_URL);
+}
 
 const client = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 35000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -42,12 +45,30 @@ client.interceptors.request.use(
 client.interceptors.response.use(
   (response) => response,
   (error) => {
-    const message =
-      error.response?.data?.message ||
-      error.message ||
-      'Network request failed. Please check your backend connection.';
-    console.error(`[API Error] [${error.config?.method?.toUpperCase()}] ${error.config?.url}:`, message);
-    return Promise.reject(new Error(message));
+    let message;
+    if (error.code === 'ECONNABORTED') {
+      message = `Cannot reach the server at ${API_BASE_URL}. Request timed out. Check Wi-Fi and that the backend is running.`;
+    } else if (!error.response) {
+      // Network Error, no response received from backend
+      message = `Cannot reach the server at ${API_BASE_URL}. Check Wi-Fi and that the backend is running.`;
+    } else {
+      message =
+        error.response?.data?.message ||
+        error.message ||
+        'Network request failed. Please check your backend connection.';
+    }
+
+    console.error(
+      `[API Error] [${error.config?.method?.toUpperCase() || 'REQUEST'}] ${error.config?.url}:`,
+      message
+    );
+
+    const enhancedError = new Error(message);
+    if (error.response) {
+      enhancedError.response = error.response;
+      enhancedError.status = error.response.status;
+    }
+    return Promise.reject(enhancedError);
   }
 );
 

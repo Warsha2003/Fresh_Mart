@@ -30,6 +30,11 @@ const userSchema = new mongoose.Schema(
       default: '+94 77 123 4567',
       trim: true,
     },
+    role: {
+      type: String,
+      enum: ['customer', 'owner', 'delivery'],
+      default: 'customer',
+    },
     avatar: {
       type: String,
       default: '',
