@@ -205,8 +205,19 @@ const AddressesScreen = ({ navigation }) => {
         <AppButton title="Add new address" onPress={() => openEditor()} icon={<Ionicons name="add" size={20} color={colors.textInverse} />} />
       </ScrollView>
 
-      <Modal visible={editorVisible} animationType="slide" transparent onRequestClose={() => setEditorVisible(false)}>
+      <Modal
+        visible={editorVisible}
+        animationType="slide"
+        transparent
+        statusBarTranslucent
+        onRequestClose={() => setEditorVisible(false)}
+      >
         <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.backdropTouchable}
+            activeOpacity={1}
+            onPress={() => setEditorVisible(false)}
+          />
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{editingId ? 'Edit address' : 'Add address'}</Text>
@@ -267,8 +278,21 @@ const styles = StyleSheet.create({
   actionButton: { alignItems: 'center', flexDirection: 'row', gap: 4, marginLeft: 16, minHeight: 32 },
   actionText: { color: colors.primary, fontSize: 12, fontWeight: '700' },
   deleteText: { color: colors.danger },
-  modalOverlay: { backgroundColor: 'rgba(0,0,0,0.45)', flex: 1, justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, maxHeight: '90%', padding: 20, paddingBottom: 28 },
+  modalOverlay: { backgroundColor: 'rgba(0,0,0,0.5)', flex: 1, justifyContent: 'flex-end' },
+  backdropTouchable: { ...StyleSheet.absoluteFillObject },
+  modalCard: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+    padding: 22,
+    paddingBottom: 36,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 20,
+  },
   modalHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
   modalTitle: { color: colors.text, fontSize: 18, fontWeight: '800' },
   label: { color: colors.text, fontSize: 12, fontWeight: '700', marginBottom: 6 },

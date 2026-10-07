@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   ActivityIndicator,
@@ -31,6 +31,17 @@ const ProfileScreen = ({ navigation }) => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Hide parent BottomTabs when a bottom sheet modal is open
+  useEffect(() => {
+    const isSheetOpen = profileEditorVisible || passwordEditorVisible;
+    navigation.setOptions({
+      tabBarStyle: isSheetOpen ? { display: 'none' } : undefined,
+    });
+    return () => {
+      navigation.setOptions({ tabBarStyle: undefined });
+    };
+  }, [profileEditorVisible, passwordEditorVisible, navigation]);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -189,8 +200,19 @@ const ProfileScreen = ({ navigation }) => {
         </ScrollView>
       )}
 
-      <Modal visible={profileEditorVisible} animationType="slide" transparent onRequestClose={() => setProfileEditorVisible(false)}>
+      <Modal
+        visible={profileEditorVisible}
+        animationType="slide"
+        transparent
+        statusBarTranslucent
+        onRequestClose={() => setProfileEditorVisible(false)}
+      >
         <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.backdropTouchable}
+            activeOpacity={1}
+            onPress={() => setProfileEditorVisible(false)}
+          />
           <View style={styles.modalCard}>
             <ModalHeader title="Edit profile" onClose={() => setProfileEditorVisible(false)} />
             <Text style={styles.inputLabel}>Full name</Text>
@@ -202,8 +224,19 @@ const ProfileScreen = ({ navigation }) => {
         </View>
       </Modal>
 
-      <Modal visible={passwordEditorVisible} animationType="slide" transparent onRequestClose={() => setPasswordEditorVisible(false)}>
+      <Modal
+        visible={passwordEditorVisible}
+        animationType="slide"
+        transparent
+        statusBarTranslucent
+        onRequestClose={() => setPasswordEditorVisible(false)}
+      >
         <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.backdropTouchable}
+            activeOpacity={1}
+            onPress={() => setPasswordEditorVisible(false)}
+          />
           <View style={styles.modalCard}>
             <ModalHeader title="Change password" onClose={() => setPasswordEditorVisible(false)} />
             <TextInput style={styles.input} value={currentPassword} onChangeText={setCurrentPassword} placeholder="Current password" placeholderTextColor={colors.textLight} secureTextEntry />
@@ -281,8 +314,20 @@ const styles = StyleSheet.create({
   menuSubtitle: { color: colors.textSecondary, fontSize: 11, marginTop: 3 },
   logoutButton: { alignItems: 'center', backgroundColor: colors.dangerLight, borderRadius: 13, flexDirection: 'row', height: 48, justifyContent: 'center', marginTop: 18 },
   logoutText: { color: colors.danger, fontSize: 14, fontWeight: '800', marginLeft: 8 },
-  modalOverlay: { backgroundColor: 'rgba(0,0,0,0.45)', flex: 1, justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 32 },
+  modalOverlay: { backgroundColor: 'rgba(0,0,0,0.5)', flex: 1, justifyContent: 'flex-end' },
+  backdropTouchable: { ...StyleSheet.absoluteFillObject },
+  modalCard: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 22,
+    paddingBottom: 38,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 20,
+  },
   modalHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
   modalTitle: { color: colors.text, fontSize: 18, fontWeight: '800' },
   inputLabel: { color: colors.text, fontSize: 12, fontWeight: '700', marginBottom: 6 },

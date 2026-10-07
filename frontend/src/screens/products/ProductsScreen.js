@@ -73,12 +73,18 @@ const ProductsScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         )}
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filtersWrapper}
+        contentContainerStyle={styles.filters}
+      >
         {categories.map((item) => (
           <TouchableOpacity
             key={item}
             style={[styles.filter, category === item && styles.filterActive]}
             onPress={() => setCategory(item)}
+            activeOpacity={0.75}
           >
             <Text style={[styles.filterText, category === item && styles.filterTextActive]}>{item}</Text>
           </TouchableOpacity>
@@ -123,10 +129,11 @@ const styles = StyleSheet.create({
   subtitle: { color: colors.textSecondary, fontSize: 13, marginTop: 3 },
   searchBox: { alignItems: 'center', backgroundColor: colors.card, borderColor: colors.border, borderRadius: 13, borderWidth: 1, flexDirection: 'row', gap: 10, height: 48, marginHorizontal: 18, paddingHorizontal: 14 },
   searchInput: { color: colors.text, flex: 1, fontSize: 14 },
-  filters: { gap: 8, paddingHorizontal: 18, paddingVertical: 14 },
-  filter: { backgroundColor: colors.card, borderColor: colors.border, borderRadius: 18, borderWidth: 1, paddingHorizontal: 15, paddingVertical: 8 },
+  filtersWrapper: { flexGrow: 0, marginVertical: 10 },
+  filters: { alignItems: 'center', flexDirection: 'row', gap: 8, paddingHorizontal: 18, paddingVertical: 4 },
+  filter: { alignItems: 'center', backgroundColor: colors.card, borderColor: colors.border, borderRadius: 20, borderWidth: 1, justifyContent: 'center', minHeight: 36, paddingHorizontal: 16, paddingVertical: 8 },
   filterActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  filterText: { color: colors.textSecondary, fontSize: 12, fontWeight: '600' },
+  filterText: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
   filterTextActive: { color: colors.textInverse },
   list: { paddingHorizontal: 18, paddingBottom: 24 },
   resultHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },

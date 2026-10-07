@@ -5,6 +5,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { useCustomer } from '../context/CustomerContext';
@@ -18,6 +19,7 @@ const Tab = createBottomTabNavigator();
 
 const BottomTabs = () => {
   const { cartCount } = useCustomer();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tab.Navigator
@@ -26,7 +28,13 @@ const BottomTabs = () => {
         tabBarShowLabel: true,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: [
+          styles.tabBar,
+          {
+            height: 62 + insets.bottom,
+            paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
+          },
+        ],
         tabBarLabelStyle: styles.tabBarLabel,
         tabBarItemStyle: styles.tabBarItem,
         tabBarIcon: ({ focused, color }) => {
@@ -66,9 +74,7 @@ const BottomTabs = () => {
 
 const styles = StyleSheet.create({
   tabBar: {
-    height: 72,
-    paddingBottom: 8,
-    paddingTop: 8,
+    paddingTop: 6,
     backgroundColor: colors.card,
     borderTopWidth: 1,
     borderTopColor: colors.border,

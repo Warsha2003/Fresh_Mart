@@ -149,7 +149,7 @@ const CartScreen = ({ navigation }) => {
                     style={styles.productImageBox}
                     onPress={() => navigation.navigate('ProductDetails', { productId })}
                   >
-                    <Image source={getProductAsset(item.imageKey)} style={styles.productImage} resizeMode="contain" />
+                    <Image source={getProductAsset(item.imageKey)} style={styles.productImage} resizeMode="cover" />
                   </TouchableOpacity>
                   <View style={styles.itemInfo}>
                     <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
@@ -330,8 +330,8 @@ const styles = StyleSheet.create({
   emptyMessage: { color: colors.textSecondary, fontSize: 13, marginTop: 5, textAlign: 'center' },
   shopButton: { marginTop: 16, minWidth: 210 },
   itemCard: { alignItems: 'center', backgroundColor: colors.card, borderColor: colors.border, borderRadius: 15, borderWidth: 1, flexDirection: 'row', marginBottom: 10, padding: 12 },
-  productImageBox: { alignItems: 'center', backgroundColor: colors.primarySurface, borderRadius: 12, height: 76, justifyContent: 'center', width: 76 },
-  productImage: { height: 64, width: 64 },
+  productImageBox: { alignItems: 'center', backgroundColor: colors.primarySurface, borderRadius: 12, height: 76, justifyContent: 'center', width: 76, overflow: 'hidden' },
+  productImage: { height: '100%', width: '100%' },
   itemInfo: { flex: 1, marginLeft: 11 },
   itemName: { color: colors.text, fontSize: 13, fontWeight: '700' },
   itemPack: { color: colors.textSecondary, fontSize: 11, marginTop: 2 },

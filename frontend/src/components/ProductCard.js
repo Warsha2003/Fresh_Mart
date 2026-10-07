@@ -49,7 +49,7 @@ const ProductCard = ({ product, navigation }) => {
         activeOpacity={0.86}
       >
         <View style={styles.imageWrap}>
-          <Image source={getProductAsset(product.imageKey)} style={styles.image} resizeMode="contain" />
+          <Image source={getProductAsset(product.imageKey)} style={styles.image} resizeMode="cover" />
           <TouchableOpacity
             accessibilityRole="button"
             accessibilityLabel={isFavourite(productId) ? 'Remove from favourites' : 'Add to favourites'}
@@ -111,11 +111,12 @@ const styles = StyleSheet.create({
     height: 132,
     justifyContent: 'center',
     marginBottom: 10,
+    overflow: 'hidden',
     position: 'relative',
   },
   image: {
-    height: 104,
-    width: '88%',
+    height: '100%',
+    width: '100%',
   },
   favoriteButton: {
     alignItems: 'center',
@@ -127,6 +128,12 @@ const styles = StyleSheet.create({
     right: 8,
     top: 8,
     width: 34,
+    zIndex: 2,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
   },
   stockTag: {
     backgroundColor: '#FEF3C7',
@@ -140,6 +147,8 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     position: 'absolute',
     top: 8,
+    zIndex: 2,
+    elevation: 2,
   },
   name: {
     color: colors.text,

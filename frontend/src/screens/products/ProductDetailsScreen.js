@@ -88,7 +88,7 @@ const ProductDetailsScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
         <View style={styles.imageBox}>
-          <Image source={getProductAsset(product.imageKey)} style={styles.image} resizeMode="contain" />
+          <Image source={getProductAsset(product.imageKey)} style={styles.image} resizeMode="cover" />
         </View>
         <Text style={styles.category}>{product.category}</Text>
         <Text style={styles.name}>{product.name}</Text>
@@ -141,8 +141,8 @@ const styles = StyleSheet.create({
   header: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   iconButton: { alignItems: 'center', backgroundColor: colors.card, borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
   headerTitle: { color: colors.text, fontSize: 17, fontWeight: '700' },
-  imageBox: { alignItems: 'center', backgroundColor: colors.primarySurface, borderRadius: 20, height: 270, justifyContent: 'center', marginTop: 18 },
-  image: { height: '82%', width: '86%' },
+  imageBox: { alignItems: 'center', backgroundColor: colors.primarySurface, borderRadius: 20, height: 270, justifyContent: 'center', marginTop: 18, overflow: 'hidden' },
+  image: { height: '100%', width: '100%' },
   category: { color: colors.primary, fontSize: 12, fontWeight: '800', marginTop: 20, textTransform: 'uppercase' },
   name: { color: colors.text, fontSize: 25, fontWeight: '800', marginTop: 5 },
   packSize: { color: colors.textSecondary, fontSize: 14, marginTop: 4 },
