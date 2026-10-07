@@ -48,6 +48,9 @@ const SlotItem = ({ slot, isSelected, onSelect }) => {
           </View>
         ) : (
           <View style={styles.availableRow}>
+            <View style={styles.availableBadge}>
+              <Text style={styles.availableBadgeText}>Available</Text>
+            </View>
             {spotsLeft <= 2 && (
               <Text style={styles.spotsLeftText}>{spotsLeft} left</Text>
             )}
@@ -129,6 +132,18 @@ const styles = StyleSheet.create({
   availableRow: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  availableBadge: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: 12,
+    marginRight: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  availableBadgeText: {
+    color: colors.primaryDark,
+    fontSize: 11,
+    fontWeight: '700',
   },
   spotsLeftText: {
     fontSize: 12,

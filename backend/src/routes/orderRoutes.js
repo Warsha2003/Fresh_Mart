@@ -6,6 +6,7 @@ const express = require('express');
 const router = express.Router();
 const {
   getCurrentOrder,
+  getMyOrders,
   updateOrderSlot,
   getOrderById,
   updateOrderStatus,
@@ -20,6 +21,7 @@ const { protect } = require('../middleware/auth');
 router.use(protect); // All order routes require JWT authentication
 
 router.get('/current', getCurrentOrder);
+router.get('/history', getMyOrders);
 router.get('/delivery/list', getDeliveryOrders);
 router.get('/delivery/:id', getDeliveryOrderById);
 router.patch('/:id/start-delivery', startDelivery);

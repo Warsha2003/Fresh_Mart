@@ -27,7 +27,9 @@ import { colors } from '../../theme/colors';
 import ScreenHeader from '../../components/ScreenHeader';
 import AppButton from '../../components/AppButton';
 import client from '../../api/client';
-import { useAuth } from '../../context/AuthContext';
+import { useCustomer } from '../../context/CustomerContext';
+import CustomerBottomBar, { CUSTOMER_BOTTOM_BAR_HEIGHT } from '../../components/CustomerBottomBar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Luhn Algorithm validation for credit card numbers
 const isValidLuhn = (numStr) => {
@@ -53,6 +55,7 @@ const isValidLuhn = (numStr) => {
 const isValidExpiry = (expiryStr) => {
   const parts = expiryStr.split('/');
   if (parts.length !== 2) return false;
+  if (!/^\d{2}\/\d{2}$/.test(expiryStr)) return false;
 
   const month = parseInt(parts[0], 10);
   const year = parseInt(`20${parts[1]}`, 10);
@@ -70,38 +73,42 @@ const isValidExpiry = (expiryStr) => {
 };
 
 const PaymentScreen = ({ navigation, route }) => {
-  const { user } = useAuth();
+  const { refreshCart } = useCustomer();
   const { orderId, slot, fulfillmentType } = route.params || {};
 
   const [paymentMethod, setPaymentMethod] = useState('card'); // 'card' | 'cash_on_pickup'
-  const [cardNumber, setCardNumber] = useState('4242 4242 4242 4242');
-  const [cardExpiry, setCardExpiry] = useState('05/27');
-  const [cardCvv, setCardCvv] = useState('123');
-  const [cardHolder, setCardHolder] = useState(user?.name || 'Kamal Perera');
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardExpiry, setCardExpiry] = useState('');
+  const [cardCvv, setCardCvv] = useState('');
+  const [cardHolder, setCardHolder] = useState('');
   const [showCvv, setShowCvv] = useState(false);
   const [loading, setLoading] = useState(false);
   const [order, setOrder] = useState(null);
+  const [orderLoading, setOrderLoading] = useState(true);
+  const insets = useSafeAreaInsets();
   const isDeliveryOrder = fulfillmentType === 'delivery' || order?.fulfillmentType === 'delivery';
+  const subtotal = Number(order?.subtotal) || 0;
+  const discountAmount = Number(order?.discountAmount) || 0;
 
   useEffect(() => {
     fetchOrderDetails();
   }, []);
 
+  useEffect(() => {
+    if (isDeliveryOrder && paymentMethod === 'cash_on_pickup') {
+      setPaymentMethod('card');
+    }
+  }, [isDeliveryOrder, paymentMethod]);
+
   const fetchOrderDetails = async () => {
     try {
-      if (orderId) {
-        const res = await client.get(`/orders/${orderId}`);
-        if (res.data?.data) {
-          setOrder(res.data.data);
-        }
-      } else {
-        const res = await client.get('/orders/current');
-        if (res.data?.data) {
-          setOrder(res.data.data);
-        }
-      }
+      const res = await client.get('/orders/current');
+      const currentOrder = res.data?.data;
+      if (currentOrder) setOrder(currentOrder);
     } catch (e) {
       console.warn('Error fetching order for payment:', e.message);
+    } finally {
+      setOrderLoading(false);
     }
   };
 
@@ -146,11 +153,19 @@ const PaymentScreen = ({ navigation, route }) => {
         Alert.alert('Invalid CVV', 'CVV code must be 3 or 4 digits.');
         return;
       }
+      if (!cardHolder.trim()) {
+        Alert.alert('Cardholder Name Required', 'Please enter the name shown on your card.');
+        return;
+      }
     }
 
     try {
       setLoading(true);
       const activeOrderId = order?._id || orderId;
+      if (!activeOrderId) {
+        Alert.alert('Order Unavailable', 'Could not locate the order to pay for.');
+        return;
+      }
 
       const res = await client.post('/payments', {
         orderId: activeOrderId,
@@ -162,20 +177,30 @@ const PaymentScreen = ({ navigation, route }) => {
       });
 
       if (res.data?.success) {
+        const savedOrder = res.data.data.order;
+        const savedPayment = res.data.data.payment;
+        if (!savedOrder?._id || !Number.isFinite(savedPayment?.amount)) {
+          Alert.alert('Payment Receipt Unavailable', 'Payment completed, but the saved order total could not be confirmed.');
+          return;
+        }
+
         // Clear sensitive card states immediately after submission
         setCardNumber('');
         setCardCvv('');
+        refreshCart().catch((error) => {
+          console.warn('Payment succeeded, but the cart could not be refreshed:', error.message);
+        });
 
         navigation.replace('PaymentSuccess', {
-          orderId: activeOrderId,
-          orderNumber: order?.orderNumber || '#FM-98432',
-          amount: order?.totalAmount || 2050,
+          orderId: savedOrder._id,
+          order: savedOrder,
+          payment: savedPayment,
           method: paymentMethod === 'card'
-            ? `Card (**** ${res.data.data.payment.last4 || '4242'})`
+            ? `Card (**** ${savedPayment.last4})`
             : isDeliveryOrder
               ? 'Cash on delivery'
               : 'Cash on pickup',
-          slotLabel: slot?.displayLabel || order?.slot?.displayLabel || '09:00 AM - 10:00 AM',
+          slotLabel: slot?.displayLabel || savedOrder.slot?.displayLabel,
         });
       }
     } catch (error) {
@@ -185,8 +210,8 @@ const PaymentScreen = ({ navigation, route }) => {
     }
   };
 
-  const totalAmount = order?.totalAmount || 2050;
-  const currentSlotLabel = slot?.displayLabel || order?.slot?.displayLabel || 'Today, 09:00 AM - 10:00 AM';
+  const totalAmount = order?.totalAmount;
+  const currentSlotLabel = slot?.displayLabel || order?.slot?.displayLabel;
 
   return (
     <KeyboardAvoidingView
@@ -204,16 +229,32 @@ const PaymentScreen = ({ navigation, route }) => {
               <Text style={styles.slotStripTitle}>
                 {fulfillmentType === 'delivery' || order?.fulfillmentType === 'delivery' ? 'Delivery Slot' : 'Pickup Slot'}
               </Text>
-              <Text style={styles.slotStripSubtitle}>{currentSlotLabel}</Text>
+              <Text style={styles.slotStripSubtitle}>{currentSlotLabel || 'Selected time slot'}</Text>
             </View>
           </View>
           <TouchableOpacity
             style={styles.changeBtn}
-            onPress={() => navigation.navigate('TimeSlot')}
+            onPress={() => navigation.navigate('TimeSlot', {
+              fulfillmentType: fulfillmentType || order?.fulfillmentType,
+              promoCode: order?.promoCode || '',
+            })}
           >
             <Text style={styles.changeBtnText}>Change</Text>
           </TouchableOpacity>
         </View>
+
+        {order ? (
+          <View style={styles.priceSummary}>
+            <Text style={styles.priceSummaryTitle}>Price details</Text>
+            <PaymentPriceRow label="Subtotal" amount={subtotal} />
+            {order.promoCode ? (
+              <PaymentPriceRow label={`Discount (${order.promoCode})`} amount={-discountAmount} discount />
+            ) : null}
+            <PaymentPriceRow label="Delivery charge" amount={Number(order.deliveryFee) || 0} />
+            <View style={styles.priceDivider} />
+            <PaymentPriceRow label="Total" amount={totalAmount} total />
+          </View>
+        ) : null}
 
         {/* Payment Method Toggle */}
         <Text style={styles.sectionTitle}>Payment Method</Text>
@@ -284,7 +325,7 @@ const PaymentScreen = ({ navigation, route }) => {
               <View style={styles.cardBottomRow}>
                 <View>
                   <Text style={styles.cardHolderLabel}>CARDHOLDER</Text>
-                  <Text style={styles.cardHolderName}>{cardHolder || 'KAMAL PERERA'}</Text>
+                  <Text style={styles.cardHolderName}>{cardHolder || 'FULL NAME'}</Text>
                 </View>
                 <View>
                   <Text style={styles.cardHolderLabel}>EXPIRES</Text>
@@ -300,7 +341,7 @@ const PaymentScreen = ({ navigation, route }) => {
                 <Ionicons name="card-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="4242 4242 4242 4242"
+                  placeholder="1234 5678 9012 3456"
                   placeholderTextColor={colors.textLight}
                   value={cardNumber}
                   onChangeText={handleCardNumberChange}
@@ -386,17 +427,30 @@ const PaymentScreen = ({ navigation, route }) => {
       </ScrollView>
 
       {/* Floating Bottom Action */}
-      <View style={styles.bottomBar}>
+      <View style={[styles.bottomBar, { bottom: CUSTOMER_BOTTOM_BAR_HEIGHT + insets.bottom }]}>
         <AppButton
-          title={`Pay Rs. ${totalAmount}`}
+          title={orderLoading ? 'Loading total...' : Number.isFinite(totalAmount) ? `Pay Rs. ${totalAmount}` : 'Order total unavailable'}
           onPress={handlePayment}
           loading={loading}
+          disabled={orderLoading || !order || !Number.isFinite(totalAmount)}
           icon={<Ionicons name="lock-closed" size={18} color={colors.textInverse} />}
         />
       </View>
+      <CustomerBottomBar navigation={navigation} />
     </KeyboardAvoidingView>
   );
 };
+
+const PaymentPriceRow = ({ label, amount, discount, total }) => (
+  <View style={styles.priceRow}>
+    <Text style={[styles.priceLabel, total && styles.priceTotalLabel, discount && styles.discountValue]}>
+      {label}
+    </Text>
+    <Text style={[styles.priceAmount, total && styles.priceTotalAmount, discount && styles.discountValue]}>
+      {amount < 0 ? `- Rs. ${Math.abs(amount)}` : `Rs. ${amount}`}
+    </Text>
+  </View>
+);
 
 const styles = StyleSheet.create({
   container: {
@@ -406,8 +460,17 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 110,
+    paddingBottom: 190,
   },
+  priceSummary: { backgroundColor: colors.card, borderColor: colors.border, borderRadius: 15, borderWidth: 1, marginBottom: 20, padding: 16 },
+  priceSummaryTitle: { color: colors.text, fontSize: 15, fontWeight: '800' },
+  priceRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
+  priceLabel: { color: colors.textSecondary, fontSize: 13 },
+  priceAmount: { color: colors.text, fontSize: 13, fontWeight: '700' },
+  priceTotalLabel: { color: colors.text, fontSize: 15, fontWeight: '800' },
+  priceTotalAmount: { color: colors.primary, fontSize: 16, fontWeight: '800' },
+  discountValue: { color: colors.primaryDark },
+  priceDivider: { backgroundColor: colors.borderLight, height: 1, marginTop: 12 },
   slotStrip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -619,13 +682,12 @@ const styles = StyleSheet.create({
   },
   bottomBar: {
     position: 'absolute',
-    bottom: 0,
     left: 0,
     right: 0,
     backgroundColor: colors.card,
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 28,
+    paddingBottom: 12,
     borderTopWidth: 1,
     borderColor: colors.border,
     shadowColor: '#000',

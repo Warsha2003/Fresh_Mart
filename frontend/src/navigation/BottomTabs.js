@@ -7,6 +7,7 @@ import { StyleSheet, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
+import { useCustomer } from '../context/CustomerContext';
 
 import HomeScreen from '../screens/home/HomeScreen';
 import ProductsScreen from '../screens/products/ProductsScreen';
@@ -16,6 +17,8 @@ import ProfileScreen from '../screens/profile/ProfileScreen';
 const Tab = createBottomTabNavigator();
 
 const BottomTabs = () => {
+  const { cartCount } = useCustomer();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -25,22 +28,18 @@ const BottomTabs = () => {
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: styles.tabBar,
         tabBarLabelStyle: styles.tabBarLabel,
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName;
-
-          if (route.name === 'Home') {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Products') {
-            iconName = focused ? 'grid' : 'grid-outline';
-          } else if (route.name === 'Cart') {
-            iconName = focused ? 'cart' : 'cart-outline';
-          } else if (route.name === 'Profile') {
-            iconName = focused ? 'person' : 'person-outline';
-          }
+        tabBarItemStyle: styles.tabBarItem,
+        tabBarIcon: ({ focused, color }) => {
+          const icons = {
+            Home: focused ? 'home' : 'home-outline',
+            Products: focused ? 'grid' : 'grid-outline',
+            Cart: focused ? 'cart' : 'cart-outline',
+            Profile: focused ? 'person' : 'person-outline',
+          };
 
           return (
             <View style={focused ? styles.activeIconContainer : null}>
-              <Ionicons name={iconName} size={22} color={color} />
+              <Ionicons name={icons[route.name]} size={22} color={color} />
             </View>
           );
         },
@@ -52,7 +51,7 @@ const BottomTabs = () => {
         name="Cart"
         component={CartScreen}
         options={{
-          tabBarBadge: 2,
+          tabBarBadge: cartCount > 0 ? cartCount : undefined,
           tabBarBadgeStyle: {
             backgroundColor: colors.primary,
             fontSize: 10,
@@ -67,7 +66,7 @@ const BottomTabs = () => {
 
 const styles = StyleSheet.create({
   tabBar: {
-    height: 64,
+    height: 72,
     paddingBottom: 8,
     paddingTop: 8,
     backgroundColor: colors.card,
@@ -82,6 +81,10 @@ const styles = StyleSheet.create({
   tabBarLabel: {
     fontSize: 11,
     fontWeight: '600',
+  },
+  tabBarItem: {
+    minHeight: 56,
+    paddingVertical: 4,
   },
   activeIconContainer: {
     transform: [{ scale: 1.05 }],

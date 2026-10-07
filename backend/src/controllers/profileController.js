@@ -5,6 +5,7 @@
  */
 const User = require('../models/User');
 const Address = require('../models/Address');
+const Cart = require('../models/Cart');
 const bcrypt = require('bcryptjs');
 
 // @desc    Get current user profile, stats, and addresses
@@ -39,8 +40,18 @@ const updateProfile = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'User not found.' });
     }
 
-    if (name) user.name = name.trim();
-    if (phone) user.phone = phone.trim();
+    if (Object.prototype.hasOwnProperty.call(req.body, 'name')) {
+      if (typeof name !== 'string' || !name.trim()) {
+        return res.status(400).json({ success: false, message: 'Name cannot be empty.' });
+      }
+      user.name = name.trim();
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'phone')) {
+      if (typeof phone !== 'string') {
+        return res.status(400).json({ success: false, message: 'Phone number must be text.' });
+      }
+      user.phone = phone.trim();
+    }
 
     await user.save();
 
@@ -125,12 +136,23 @@ const getAddresses = async (req, res, next) => {
 // @access  Private
 const createAddress = async (req, res, next) => {
   try {
-    const { label, addressLine, city, postalCode, isDefault } = req.body;
+    const { label, addressLine, city, postalCode, isDefault, location } = req.body;
 
-    if (!addressLine || !city) {
+    if (
+      typeof addressLine !== 'string' ||
+      !addressLine.trim() ||
+      typeof city !== 'string' ||
+      !city.trim()
+    ) {
       return res.status(400).json({
         success: false,
         message: 'Street address line and city are required.',
+      });
+    }
+    if (location && (!Number.isFinite(location.latitude) || !Number.isFinite(location.longitude))) {
+      return res.status(400).json({
+        success: false,
+        message: 'Location must include valid latitude and longitude coordinates.',
       });
     }
 
@@ -142,15 +164,92 @@ const createAddress = async (req, res, next) => {
     const address = await Address.create({
       user: req.user._id,
       label: label || 'Home',
-      addressLine,
-      city,
+      addressLine: addressLine.trim(),
+      city: city.trim(),
       postalCode: postalCode || '00300',
+      ...(location ? { location } : {}),
       isDefault: Boolean(isDefault),
     });
+    if (address.isDefault) {
+      const cart = await Cart.findOne({ user: req.user._id });
+      if (cart && !cart.selectedAddress) {
+        cart.selectedAddress = address._id;
+        await cart.save();
+      }
+    }
 
     res.status(201).json({
       success: true,
       message: 'Address saved successfully.',
+      data: address,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update a saved address
+// @route   PUT /api/profile/addresses/:id
+// @access  Private
+const updateAddress = async (req, res, next) => {
+  try {
+    const address = await Address.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
+
+    if (!address) {
+      return res.status(404).json({
+        success: false,
+        message: 'Address not found or unauthorized.',
+      });
+    }
+
+    const { label, addressLine, city, postalCode, isDefault, location } = req.body;
+    if (addressLine !== undefined && (typeof addressLine !== 'string' || !addressLine.trim())) {
+      return res.status(400).json({ success: false, message: 'Street address cannot be empty.' });
+    }
+    if (city !== undefined && (typeof city !== 'string' || !city.trim())) {
+      return res.status(400).json({ success: false, message: 'City cannot be empty.' });
+    }
+    if (label !== undefined && typeof label !== 'string') {
+      return res.status(400).json({ success: false, message: 'Address label must be text.' });
+    }
+    if (postalCode !== undefined && typeof postalCode !== 'string') {
+      return res.status(400).json({ success: false, message: 'Postal code must be text.' });
+    }
+    if (location && (!Number.isFinite(location.latitude) || !Number.isFinite(location.longitude))) {
+      return res.status(400).json({
+        success: false,
+        message: 'Location must include valid latitude and longitude coordinates.',
+      });
+    }
+
+    if (label !== undefined) address.label = label.trim() || 'Home';
+    if (addressLine !== undefined) address.addressLine = addressLine.trim();
+    if (city !== undefined) address.city = city.trim();
+    if (postalCode !== undefined) address.postalCode = postalCode.trim();
+    if (location !== undefined) address.location = location;
+
+    if (isDefault === true) {
+      await Address.updateMany(
+        { user: req.user._id, _id: { $ne: address._id } },
+        { isDefault: false }
+      );
+      address.isDefault = true;
+      const cart = await Cart.findOne({ user: req.user._id });
+      if (cart && !cart.selectedAddress) {
+        cart.selectedAddress = address._id;
+        await cart.save();
+      }
+    } else if (isDefault === false) {
+      address.isDefault = false;
+    }
+
+    await address.save();
+    res.status(200).json({
+      success: true,
+      message: 'Address updated successfully.',
       data: address,
     });
   } catch (error) {
@@ -175,6 +274,19 @@ const deleteAddress = async (req, res, next) => {
       });
     }
 
+    if (address.isDefault) {
+      const nextDefault = await Address.findOne({ user: req.user._id }).sort({ createdAt: 1 });
+      if (nextDefault) {
+        nextDefault.isDefault = true;
+        await nextDefault.save();
+      }
+    }
+    const replacementAddress = await Address.findOne({ user: req.user._id, isDefault: true });
+    await Cart.updateMany(
+      { user: req.user._id, selectedAddress: address._id },
+      { selectedAddress: replacementAddress?._id || null }
+    );
+
     res.status(200).json({
       success: true,
       message: 'Address deleted successfully.',
@@ -190,5 +302,6 @@ module.exports = {
   changePassword,
   getAddresses,
   createAddress,
+  updateAddress,
   deleteAddress,
 };

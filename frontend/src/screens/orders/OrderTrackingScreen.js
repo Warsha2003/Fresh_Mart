@@ -23,6 +23,7 @@ import ScreenHeader from '../../components/ScreenHeader';
 import StatusStep from '../../components/StatusStep';
 import AppButton from '../../components/AppButton';
 import client from '../../api/client';
+import CustomerBottomBar from '../../components/CustomerBottomBar';
 
 const statusSequence = ['placed', 'packed', 'out_for_delivery', 'delivered'];
 
@@ -39,18 +40,20 @@ const OrderTrackingScreen = ({ navigation, route }) => {
 
   // CRUD Operation 1: READ Order Details & Status
   const fetchOrderDetails = async () => {
-    try {
-      setLoading(true);
-      let res;
-      if (orderId) {
-        res = await client.get(`/orders/${orderId}`);
-      } else {
-        // Fallback to recent order
-        res = await client.get('/orders/current');
-      }
+    if (!orderId) {
+      setOrder(null);
+      setLoading(false);
+      return;
+    }
 
+    try {
+      setOrder(null);
+      setLoading(true);
+      const res = await client.get(`/orders/${orderId}`);
       if (res.data?.data) {
         setOrder(res.data.data);
+      } else {
+        setOrder(null);
       }
     } catch (error) {
       Alert.alert('Error', error.message || 'Could not load order tracking details.');
@@ -134,6 +137,8 @@ const OrderTrackingScreen = ({ navigation, route }) => {
     return 'pending';
   };
 
+  const itemCount = order?.items?.reduce((count, item) => count + item.quantity, 0) || 0;
+
   return (
     <View style={styles.container}>
       <ScreenHeader
@@ -154,7 +159,9 @@ const OrderTrackingScreen = ({ navigation, route }) => {
       ) : !order ? (
         <View style={styles.centerContainer}>
           <Ionicons name="alert-circle-outline" size={48} color={colors.disabled} />
-          <Text style={styles.emptyText}>No active order found.</Text>
+          <Text style={styles.emptyText}>
+            {orderId ? 'No order found for this tracking link.' : 'An order ID is required to track an order.'}
+          </Text>
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -234,20 +241,25 @@ const OrderTrackingScreen = ({ navigation, route }) => {
 
           {/* Items Summary Card */}
           <View style={styles.card}>
-            <View style={styles.rowBetween}>
-              <Text style={styles.cardHeaderTitle}>Items Summary</Text>
-              <Text style={styles.itemsPriceTotal}>Rs. {order.totalAmount}</Text>
-            </View>
+            <Text style={styles.cardHeaderTitle}>Items Summary · {itemCount} items</Text>
             <View style={styles.itemsDivider} />
 
-            {order.items?.map((item, idx) => (
+            {(order.items || []).map((item, idx) => (
               <View key={idx} style={styles.itemSummaryRow}>
                 <Ionicons name="basket-outline" size={16} color={colors.primary} style={{ marginRight: 8 }} />
                 <Text style={styles.itemSummaryName}>{item.name}</Text>
                 <Text style={styles.itemSummaryQty}>x{item.quantity}</Text>
-                <Text style={styles.itemSummaryPrice}>Rs. {item.price}</Text>
+                <Text style={styles.itemSummaryPrice}>Rs. {item.price * item.quantity}</Text>
               </View>
             ))}
+            <View style={styles.itemsDivider} />
+            <OrderPriceRow label="Subtotal" amount={order.subtotal} />
+            {order.promoCode ? (
+              <OrderPriceRow label={`Discount (${order.promoCode})`} amount={-Number(order.discountAmount || 0)} discount />
+            ) : null}
+            <OrderPriceRow label="Delivery charge" amount={order.deliveryFee} />
+            <View style={styles.itemsDivider} />
+            <OrderPriceRow label="Total" amount={order.totalAmount} total />
           </View>
 
           {/* Address / Location Card */}
@@ -285,12 +297,28 @@ const OrderTrackingScreen = ({ navigation, route }) => {
                 icon={<Ionicons name="trash-outline" size={18} color={colors.danger} />}
               />
             )}
+            <CustomerBottomBar navigation={navigation} />
           </View>
         </ScrollView>
       )}
     </View>
   );
 };
+
+const OrderPriceRow = ({ label, amount, discount, total }) => (
+  <View style={styles.orderPriceRow}>
+    <Text style={[styles.orderPriceLabel, total && styles.orderPriceTotal, discount && styles.orderDiscount]}>
+      {label}
+    </Text>
+    <Text style={[styles.orderPriceAmount, total && styles.orderPriceTotal, discount && styles.orderDiscount]}>
+      {Number.isFinite(Number(amount))
+        ? amount < 0
+          ? `- Rs. ${Math.abs(amount)}`
+          : `Rs. ${amount}`
+        : 'Unavailable'}
+    </Text>
+  </View>
+);
 
 const styles = StyleSheet.create({
   container: {
@@ -316,7 +344,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 100,
   },
   bannerCard: {
     flexDirection: 'row',
@@ -407,11 +435,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  itemsPriceTotal: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.primary,
-  },
+  orderPriceRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 9 },
+  orderPriceLabel: { color: colors.textSecondary, fontSize: 13 },
+  orderPriceAmount: { color: colors.text, fontSize: 13, fontWeight: '700' },
+  orderPriceTotal: { color: colors.primary, fontSize: 15, fontWeight: '800' },
+  orderDiscount: { color: colors.primaryDark },
   itemsDivider: {
     height: 1,
     backgroundColor: colors.borderLight,

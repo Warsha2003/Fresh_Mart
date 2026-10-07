@@ -30,6 +30,10 @@ import PaymentSuccessScreen from '../screens/checkout/PaymentSuccessScreen';
 
 // Orders Scope Screen (Screen 11)
 import OrderTrackingScreen from '../screens/orders/OrderTrackingScreen';
+import OrdersScreen from '../screens/orders/OrdersScreen';
+import ProductDetailsScreen from '../screens/products/ProductDetailsScreen';
+import FavouritesScreen from '../screens/profile/FavouritesScreen';
+import AddressesScreen from '../screens/profile/AddressesScreen';
 
 // Delivery Partner Scope Screens (Screens 21 - 25)
 import DeliveryDashboardScreen from '../screens/delivery/DeliveryDashboardScreen';
@@ -124,6 +128,10 @@ const RootNavigator = () => {
               options={{ gestureEnabled: false }}
             />
             <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />
+            <Stack.Screen name="Orders" component={OrdersScreen} />
+            <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
+            <Stack.Screen name="Favourites" component={FavouritesScreen} />
+            <Stack.Screen name="Addresses" component={AddressesScreen} />
 
             {/* Delivery Partner Flow (Screens 21 to 25) */}
             <Stack.Screen name="DeliveryDashboard" component={DeliveryDashboardScreen} />

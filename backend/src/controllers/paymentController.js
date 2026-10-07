@@ -11,6 +11,13 @@
 const Payment = require('../models/Payment');
 const Order = require('../models/Order');
 const User = require('../models/User');
+const Cart = require('../models/Cart');
+const {
+  DELIVERY_CHARGE,
+  FREE_DELIVERY_THRESHOLD,
+  PROMO_CODES,
+  calculatePromoDiscount,
+} = require('../config/customerConstants');
 
 // Helper to determine card brand from prefix
 const detectCardBrand = (cardNumber) => {
@@ -73,10 +80,59 @@ const createPayment = async (req, res, next) => {
       });
     }
 
+    const cart = await Cart.findOne({ user: req.user._id })
+      .populate('items.product')
+      .populate('selectedAddress');
+    const currentItems = (cart?.items || [])
+      .filter((item) => item.product && item.product.isActive)
+      .map((item) => ({
+        name: item.product.name,
+        quantity: item.quantity,
+        price: item.product.unitPrice,
+        unit: item.product.packSize,
+      }));
+    if (!currentItems.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'Your cart is empty. Add products before payment.',
+      });
+    }
+
+    order.items = currentItems;
+    order.subtotal = currentItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    if (order.promoCode && !PROMO_CODES[order.promoCode]) {
+      return res.status(400).json({
+        success: false,
+        message: 'The promo code on this order is no longer valid. Please update your cart.',
+      });
+    }
+    order.discountAmount = calculatePromoDiscount(order.promoCode, order.subtotal);
+    order.deliveryFee = order.fulfillmentType === 'delivery' &&
+      order.subtotal < FREE_DELIVERY_THRESHOLD
+      ? DELIVERY_CHARGE
+      : 0;
+    order.totalAmount = order.subtotal - order.discountAmount + order.deliveryFee;
+    if (order.fulfillmentType === 'delivery') {
+      order.deliveryAddress = cart.selectedAddress?._id || order.deliveryAddress;
+      if (!order.deliveryAddress) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please select a delivery address before payment.',
+        });
+      }
+    }
+    await order.save();
+
     if (!order.slot) {
       return res.status(400).json({
         success: false,
         message: 'Please select a pickup or delivery time slot before proceeding to payment.',
+      });
+    }
+    if (!order.items.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'Your order has no items. Add products before payment.',
       });
     }
 
@@ -118,6 +174,10 @@ const createPayment = async (req, res, next) => {
     // Update order status to placed
     order.status = 'placed';
     await order.save();
+    await Cart.findOneAndUpdate(
+      { user: req.user._id },
+      { $set: { items: [] } }
+    );
 
     // Update user stats
     await User.findByIdAndUpdate(req.user._id, {

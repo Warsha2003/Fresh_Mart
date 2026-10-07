@@ -5,69 +5,28 @@
  * CRUD OPERATIONS:
  * 1. READ: Loads order and payment receipt summary (GET /api/orders/:id or route params)
  */
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import AppButton from '../../components/AppButton';
-import client from '../../api/client';
 
 const PaymentSuccessScreen = ({ navigation, route }) => {
-  const { orderId, orderNumber, amount, method, slotLabel } = route.params || {};
-
-  const [receipt, setReceipt] = useState({
-    orderId: orderId || '',
-    orderNumber: orderNumber || '#FM-98432',
-    amount: amount || 2050,
-    method: method || 'Card (**** 4242)',
-    slotLabel: slotLabel || 'Today, 09:00 - 10:00 AM',
-  });
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (orderId) {
-      fetchReceiptDetails();
-    }
-  }, [orderId]);
-
-  // CRUD Operation: READ Payment & Order details
-  const fetchReceiptDetails = async () => {
-    try {
-      setLoading(true);
-      const [orderRes, payRes] = await Promise.allSettled([
-        client.get(`/orders/${orderId}`),
-        client.get(`/payments/order/${orderId}`),
-      ]);
-
-      let updatedData = { ...receipt };
-
-      if (orderRes.status === 'fulfilled' && orderRes.value.data?.data) {
-        const orderData = orderRes.value.data.data;
-        updatedData.orderNumber = orderData.orderNumber || updatedData.orderNumber;
-        updatedData.amount = orderData.totalAmount || updatedData.amount;
-        if (orderData.slot?.displayLabel) {
-          updatedData.slotLabel = `Today, ${orderData.slot.displayLabel}`;
-        }
-      }
-
-      if (payRes.status === 'fulfilled' && payRes.value.data?.data) {
-        const payData = payRes.value.data.data;
-        if (payData.method === 'card') {
-          updatedData.method = `Card (**** ${payData.last4 || '4242'})`;
-        } else if (payData.method === 'cash_on_delivery') {
-          updatedData.method = 'Cash on delivery';
-        } else {
-          updatedData.method = 'Cash on pickup';
-        }
-      }
-
-      setReceipt(updatedData);
-    } catch (e) {
-      console.warn('Error refreshing receipt data:', e.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { orderId, order, payment, method, slotLabel } = route.params || {};
+  const amountPaid = payment?.amount;
+  const paymentMethod = method || (
+    payment?.method === 'card'
+      ? `Card (**** ${payment.last4})`
+      : payment?.method === 'cash_on_delivery'
+        ? 'Cash on delivery'
+        : payment?.method === 'cash_on_pickup'
+          ? 'Cash on pickup'
+          : ''
+  );
+  const savedOrderId = order?._id || orderId;
+  const savedOrderNumber = order?.orderNumber;
+  const savedSlotLabel = slotLabel || order?.slot?.displayLabel;
+  const isCashOnDelivery = paymentMethod === 'Cash on delivery';
 
   return (
     <View style={styles.container}>
@@ -90,43 +49,66 @@ const PaymentSuccessScreen = ({ navigation, route }) => {
 
         {/* Success Typography */}
         <Text style={styles.title}>
-          {receipt.method === 'Cash on delivery' ? 'Order Confirmed' : 'Payment Successful'}
+          {isCashOnDelivery ? 'Order Confirmed' : 'Payment Successful'}
         </Text>
         <Text style={styles.subtitle}>
-          {receipt.method === 'Cash on delivery'
+          {isCashOnDelivery
             ? 'Your delivery order is confirmed. Please pay the delivery partner when it arrives.'
             : 'Your payment has been processed successfully. We will send a confirmation email shortly.'}
         </Text>
 
         {/* Receipt Summary Card */}
-        {loading ? (
-          <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 20 }} />
-        ) : (
-          <View style={styles.receiptCard}>
-            <View style={styles.receiptRow}>
-              <Text style={styles.receiptLabel}>Amount</Text>
-              <Text style={styles.receiptValueBold}>Rs. {receipt.amount}</Text>
-            </View>
-            <View style={styles.receiptDivider} />
-
-            <View style={styles.receiptRow}>
-              <Text style={styles.receiptLabel}>Payment Method</Text>
-              <Text style={styles.receiptValue}>{receipt.method}</Text>
-            </View>
-            <View style={styles.receiptDivider} />
-
-            <View style={styles.receiptRow}>
-              <Text style={styles.receiptLabel}>Fulfillment Slot</Text>
-              <Text style={styles.receiptValue}>{receipt.slotLabel}</Text>
-            </View>
-            <View style={styles.receiptDivider} />
-
-            <View style={styles.receiptRow}>
-              <Text style={styles.receiptLabel}>Order ID</Text>
-              <Text style={styles.receiptOrderId}>{receipt.orderNumber}</Text>
-            </View>
+        <View style={styles.receiptCard}>
+          <View style={styles.receiptRow}>
+            <Text style={styles.receiptLabel}>Amount paid</Text>
+            <Text style={styles.receiptValueBold}>
+              {Number.isFinite(amountPaid) ? `Rs. ${amountPaid}` : 'Unavailable'}
+            </Text>
           </View>
-        )}
+          <View style={styles.receiptDivider} />
+          <View style={styles.receiptRow}>
+            <Text style={styles.receiptLabel}>Subtotal</Text>
+            <Text style={styles.receiptValue}>
+              {Number.isFinite(order?.subtotal) ? `Rs. ${order.subtotal}` : 'Unavailable'}
+            </Text>
+          </View>
+          {order?.promoCode ? (
+            <>
+              <View style={styles.receiptDivider} />
+              <View style={styles.receiptRow}>
+                <Text style={styles.receiptLabel}>Discount ({order.promoCode})</Text>
+                <Text style={styles.discountValue}>
+                  - Rs. {Number(order.discountAmount) || 0}
+                </Text>
+              </View>
+            </>
+          ) : null}
+          <View style={styles.receiptDivider} />
+          <View style={styles.receiptRow}>
+            <Text style={styles.receiptLabel}>Delivery charge</Text>
+            <Text style={styles.receiptValue}>
+              {Number.isFinite(order?.deliveryFee) ? `Rs. ${order.deliveryFee}` : 'Unavailable'}
+            </Text>
+          </View>
+          <View style={styles.receiptDivider} />
+
+          <View style={styles.receiptRow}>
+            <Text style={styles.receiptLabel}>Payment Method</Text>
+            <Text style={styles.receiptValue}>{paymentMethod || 'Unavailable'}</Text>
+          </View>
+          <View style={styles.receiptDivider} />
+
+          <View style={styles.receiptRow}>
+            <Text style={styles.receiptLabel}>Fulfillment Slot</Text>
+            <Text style={styles.receiptValue}>{savedSlotLabel || 'Unavailable'}</Text>
+          </View>
+          <View style={styles.receiptDivider} />
+
+          <View style={styles.receiptRow}>
+            <Text style={styles.receiptLabel}>Order ID</Text>
+            <Text style={styles.receiptOrderId}>{savedOrderNumber || 'Unavailable'}</Text>
+          </View>
+        </View>
 
         {/* Action Buttons */}
         <View style={styles.buttonsGroup}>
@@ -134,7 +116,7 @@ const PaymentSuccessScreen = ({ navigation, route }) => {
             title="Track Order"
             onPress={() =>
               navigation.navigate('OrderTracking', {
-                orderId: receipt.orderId,
+                orderId: savedOrderId,
               })
             }
             icon={<Ionicons name="location-outline" size={18} color={colors.textInverse} />}
@@ -252,6 +234,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     color: colors.primary,
+  },
+  discountValue: {
+    color: colors.primaryDark,
+    fontSize: 14,
+    fontWeight: '700',
   },
   receiptOrderId: {
     fontSize: 14,

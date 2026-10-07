@@ -18,14 +18,18 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
+import { calculatePromoDiscount, DELIVERY_CHARGE, FREE_DELIVERY_THRESHOLD } from '../../config/customerConstants';
 import ScreenHeader from '../../components/ScreenHeader';
 import DateChip from '../../components/DateChip';
 import SlotItem from '../../components/SlotItem';
 import AppButton from '../../components/AppButton';
 import client from '../../api/client';
+import CustomerBottomBar, { CUSTOMER_BOTTOM_BAR_HEIGHT } from '../../components/CustomerBottomBar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const TimeSlotScreen = ({ navigation }) => {
-  const [fulfillmentType, setFulfillmentType] = useState('pickup'); // 'pickup' | 'delivery'
+const TimeSlotScreen = ({ navigation, route }) => {
+  const initialFulfillmentType = route.params?.fulfillmentType || 'pickup';
+  const [fulfillmentType, setFulfillmentType] = useState(initialFulfillmentType);
   const [dateList, setDateList] = useState([]);
   const [selectedDate, setSelectedDate] = useState('');
   const [slots, setSlots] = useState([]);
@@ -33,6 +37,14 @@ const TimeSlotScreen = ({ navigation }) => {
   const [order, setOrder] = useState(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const insets = useSafeAreaInsets();
+  const promoCode = route.params?.promoCode || order?.promoCode || '';
+  const subtotal = Number(order?.subtotal) || 0;
+  const discountAmount = calculatePromoDiscount(promoCode, subtotal);
+  const deliveryFee = fulfillmentType === 'delivery' && subtotal < FREE_DELIVERY_THRESHOLD
+    ? DELIVERY_CHARGE
+    : 0;
+  const totalAmount = subtotal - discountAmount + deliveryFee;
 
   // Initialize 3 date chips starting from today
   useEffect(() => {
@@ -87,11 +99,8 @@ const TimeSlotScreen = ({ navigation }) => {
       const res = await client.get('/orders/current');
       if (res.data?.data) {
         setOrder(res.data.data);
-        if (res.data.data.fulfillmentType) {
+        if (!route.params?.fulfillmentType && res.data.data.fulfillmentType) {
           setFulfillmentType(res.data.data.fulfillmentType);
-        }
-        if (res.data.data.slot) {
-          setSelectedSlot(res.data.data.slot);
         }
       }
     } catch (error) {
@@ -103,6 +112,7 @@ const TimeSlotScreen = ({ navigation }) => {
   const fetchSlots = async (date, type) => {
     try {
       setLoadingSlots(true);
+      setSlots([]);
       const res = await client.get(`/slots?date=${date}&type=${type}`);
       if (res.data?.data) {
         setSlots(res.data.data);
@@ -131,13 +141,15 @@ const TimeSlotScreen = ({ navigation }) => {
       const res = await client.put(`/orders/${order._id}/slot`, {
         slotId: selectedSlot._id,
         fulfillmentType,
+        promoCode,
       });
 
       if (res.data?.success) {
         navigation.navigate('Payment', {
-          orderId: order._id,
+          orderId: res.data.data._id,
           slot: selectedSlot,
           fulfillmentType,
+          promoCode,
         });
       }
     } catch (error) {
@@ -162,6 +174,7 @@ const TimeSlotScreen = ({ navigation }) => {
             onPress={() => {
               setFulfillmentType('pickup');
               setSelectedSlot(null);
+              setSlots([]);
             }}
             activeOpacity={0.8}
           >
@@ -186,6 +199,7 @@ const TimeSlotScreen = ({ navigation }) => {
             onPress={() => {
               setFulfillmentType('delivery');
               setSelectedSlot(null);
+              setSlots([]);
             }}
             activeOpacity={0.8}
           >
@@ -206,6 +220,29 @@ const TimeSlotScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
+        {order ? (
+          <>
+            <View style={styles.deliveryMessage}>
+              <Ionicons name="pricetag-outline" size={18} color={colors.primary} />
+              <Text style={styles.deliveryMessageText}>
+                {fulfillmentType === 'pickup'
+                  ? 'Pickup is always free.'
+                  : subtotal >= FREE_DELIVERY_THRESHOLD
+                    ? "You've unlocked free delivery on this order."
+                    : `Add Rs. ${(FREE_DELIVERY_THRESHOLD - subtotal).toLocaleString()} more for free delivery.`}
+              </Text>
+            </View>
+            <View style={styles.priceSummary}>
+              <Text style={styles.priceSummaryTitle}>Price details</Text>
+              <PriceRow label="Subtotal" amount={subtotal} />
+              {promoCode ? <PriceRow label={`Discount (${promoCode})`} amount={-discountAmount} discount /> : null}
+              <PriceRow label="Delivery charge" amount={deliveryFee} />
+              <View style={styles.priceDivider} />
+              <PriceRow label="Total" amount={totalAmount} total />
+            </View>
+          </>
+        ) : null}
+
         {/* Date Selector Row */}
         <View style={styles.dateSection}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateScroll}>
@@ -219,6 +256,7 @@ const TimeSlotScreen = ({ navigation }) => {
                 onSelect={(d) => {
                   setSelectedDate(d);
                   setSelectedSlot(null);
+                  setSlots([]);
                 }}
               />
             ))}
@@ -256,18 +294,30 @@ const TimeSlotScreen = ({ navigation }) => {
       </ScrollView>
 
       {/* Floating Bottom Bar */}
-      <View style={styles.bottomBar}>
+      <View style={[styles.bottomBar, { bottom: CUSTOMER_BOTTOM_BAR_HEIGHT + insets.bottom }]}>
         <AppButton
           title="Continue to Payment"
           onPress={handleContinue}
           loading={submitting}
-          disabled={!selectedSlot}
+          disabled={!selectedSlot || submitting || loadingSlots}
           icon={<Ionicons name="arrow-forward" size={18} color={colors.textInverse} />}
         />
       </View>
+      <CustomerBottomBar navigation={navigation} />
     </View>
   );
 };
+
+const PriceRow = ({ label, amount, discount, total }) => (
+  <View style={styles.priceRow}>
+    <Text style={[styles.priceLabel, total && styles.priceTotalLabel, discount && styles.discountValue]}>
+      {label}
+    </Text>
+    <Text style={[styles.priceAmount, total && styles.priceTotalAmount, discount && styles.discountValue]}>
+      {amount < 0 ? `- Rs. ${Math.abs(amount)}` : `Rs. ${amount}`}
+    </Text>
+  </View>
+);
 
 const styles = StyleSheet.create({
   container: {
@@ -277,7 +327,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 110,
+    paddingBottom: 190,
   },
   toggleContainer: {
     flexDirection: 'row',
@@ -311,6 +361,25 @@ const styles = StyleSheet.create({
     color: colors.primaryDark,
     fontWeight: '700',
   },
+  deliveryMessage: {
+    alignItems: 'center',
+    backgroundColor: colors.primaryLight,
+    borderRadius: 12,
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+    padding: 12,
+  },
+  deliveryMessageText: { color: colors.primaryDark, flex: 1, fontSize: 12, fontWeight: '600' },
+  priceSummary: { backgroundColor: colors.card, borderColor: colors.border, borderRadius: 15, borderWidth: 1, marginBottom: 18, padding: 16 },
+  priceSummaryTitle: { color: colors.text, fontSize: 15, fontWeight: '800' },
+  priceRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
+  priceLabel: { color: colors.textSecondary, fontSize: 13 },
+  priceAmount: { color: colors.text, fontSize: 13, fontWeight: '700' },
+  priceTotalLabel: { color: colors.text, fontSize: 15, fontWeight: '800' },
+  priceTotalAmount: { color: colors.primary, fontSize: 16, fontWeight: '800' },
+  discountValue: { color: colors.primaryDark },
+  priceDivider: { backgroundColor: colors.borderLight, height: 1, marginTop: 12 },
   dateSection: {
     marginBottom: 20,
   },
@@ -355,13 +424,12 @@ const styles = StyleSheet.create({
   },
   bottomBar: {
     position: 'absolute',
-    bottom: 0,
     left: 0,
     right: 0,
     backgroundColor: colors.card,
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 28,
+    paddingBottom: 12,
     borderTopWidth: 1,
     borderColor: colors.border,
     shadowColor: '#000',

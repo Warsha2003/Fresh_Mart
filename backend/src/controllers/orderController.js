@@ -6,6 +6,16 @@ const Order = require('../models/Order');
 const Slot = require('../models/Slot');
 const Address = require('../models/Address');
 const Payment = require('../models/Payment');
+const Cart = require('../models/Cart');
+const {
+  DELIVERY_CHARGE,
+  FREE_DELIVERY_THRESHOLD,
+  PROMO_CODES,
+  calculatePromoDiscount,
+} = require('../config/customerConstants');
+
+const getDeliveryCharge = (subtotal) =>
+  subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_CHARGE;
 
 // Helper to generate unique order number like #FM-98432
 const generateOrderNumber = () => {
@@ -18,6 +28,26 @@ const generateOrderNumber = () => {
 // @access  Private
 const getCurrentOrder = async (req, res, next) => {
   try {
+    const cart = await Cart.findOne({ user: req.user._id })
+      .populate('items.product')
+      .populate('selectedAddress');
+    const items = (cart?.items || [])
+      .filter((item) => item.product && item.product.isActive)
+      .map((item) => ({
+        name: item.product.name,
+        quantity: item.quantity,
+        price: item.product.unitPrice,
+        unit: item.product.packSize,
+      }));
+
+    if (!items.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'Your cart is empty. Add products before checkout.',
+      });
+    }
+
+    const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
     let order = await Order.findOne({
       user: req.user._id,
       status: 'draft',
@@ -25,46 +55,57 @@ const getCurrentOrder = async (req, res, next) => {
       .populate('slot')
       .populate('deliveryAddress');
 
-    // If no draft order exists, create a default cart order matching Figma items
     if (!order) {
-      // Find default address if available
-      const defaultAddress = await Address.findOne({ user: req.user._id, isDefault: true });
-
       order = await Order.create({
         orderNumber: generateOrderNumber(),
         user: req.user._id,
         fulfillmentType: 'pickup',
-        items: [
-          {
-            name: 'Basmati Rice 5kg',
-            quantity: 1,
-            price: 800,
-            unit: '5 kg',
-          },
-          {
-            name: 'Coconut Oil 1L',
-            quantity: 1,
-            price: 1200,
-            unit: '1 L',
-          },
-        ],
-        subtotal: 2000,
-        deliveryFee: 50,
-        totalAmount: 2050,
+        items,
+        subtotal,
+        deliveryFee: 0,
+        totalAmount: subtotal,
         status: 'draft',
-        deliveryAddress: defaultAddress ? defaultAddress._id : null,
+        deliveryAddress: cart.selectedAddress?._id || null,
         storeAddress: '203 Galle Road, Colombo 03',
         estimatedTime: '12:15 PM',
       });
-
-      order = await Order.findById(order._id)
-        .populate('slot')
-        .populate('deliveryAddress');
+    } else {
+      order.items = items;
+      order.subtotal = subtotal;
+      order.deliveryAddress = cart.selectedAddress?._id || null;
+      order.discountAmount = calculatePromoDiscount(order.promoCode, subtotal);
+      order.deliveryFee = order.fulfillmentType === 'delivery' ? getDeliveryCharge(subtotal) : 0;
+      order.totalAmount = order.subtotal - order.discountAmount + order.deliveryFee;
+      await order.save();
     }
 
+    order = await Order.findById(order._id).populate('slot').populate('deliveryAddress');
     res.status(200).json({
       success: true,
       data: order,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    List the current customer's non-draft orders
+// @route   GET /api/orders/history
+// @access  Private
+const getMyOrders = async (req, res, next) => {
+  try {
+    const orders = await Order.find({
+      user: req.user._id,
+      status: { $ne: 'draft' },
+    })
+      .populate('slot')
+      .populate('deliveryAddress')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: orders.length,
+      data: orders,
     });
   } catch (error) {
     next(error);
@@ -76,7 +117,7 @@ const getCurrentOrder = async (req, res, next) => {
 // @access  Private
 const updateOrderSlot = async (req, res, next) => {
   try {
-    const { slotId, fulfillmentType } = req.body;
+    const { slotId, fulfillmentType, promoCode } = req.body;
 
     const order = await Order.findOne({
       _id: req.params.id,
@@ -96,6 +137,18 @@ const updateOrderSlot = async (req, res, next) => {
         message: 'Please provide a valid slotId.',
       });
     }
+    if (fulfillmentType && !['pickup', 'delivery'].includes(fulfillmentType)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Fulfillment type must be pickup or delivery.',
+      });
+    }
+    if (promoCode !== undefined && promoCode && !PROMO_CODES[promoCode.trim().toUpperCase()]) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid promo code.',
+      });
+    }
 
     const newSlot = await Slot.findById(slotId);
     if (!newSlot) {
@@ -103,6 +156,21 @@ const updateOrderSlot = async (req, res, next) => {
         success: false,
         message: 'Time slot not found.',
       });
+    }
+
+    const nextFulfillmentType = fulfillmentType || order.fulfillmentType;
+    let selectedAddressId = order.deliveryAddress;
+    if (nextFulfillmentType === 'delivery') {
+      const cart = await Cart.findOne({ user: req.user._id }).populate('selectedAddress');
+      const selectedAddress = cart?.selectedAddress ||
+        await Address.findOne({ user: req.user._id, isDefault: true });
+      if (!selectedAddress) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please select a saved delivery address before booking a delivery slot.',
+        });
+      }
+      selectedAddressId = selectedAddress._id;
     }
 
     // Check if new slot is full
@@ -131,17 +199,16 @@ const updateOrderSlot = async (req, res, next) => {
     }
 
     order.slot = newSlot._id;
-    if (fulfillmentType) {
-      order.fulfillmentType = fulfillmentType;
-      // Adjust delivery fee if pickup vs delivery
-      if (fulfillmentType === 'pickup') {
-        order.deliveryFee = 0;
-        order.totalAmount = order.subtotal;
-      } else {
-        order.deliveryFee = 50;
-        order.totalAmount = order.subtotal + 50;
-      }
+    order.deliveryAddress = nextFulfillmentType === 'delivery' ? selectedAddressId : null;
+    order.fulfillmentType = nextFulfillmentType;
+    if (promoCode !== undefined) {
+      order.promoCode = promoCode.trim().toUpperCase();
     }
+    order.discountAmount = calculatePromoDiscount(order.promoCode, order.subtotal);
+    order.deliveryFee = nextFulfillmentType === 'delivery'
+      ? getDeliveryCharge(order.subtotal)
+      : 0;
+    order.totalAmount = order.subtotal - order.discountAmount + order.deliveryFee;
     await order.save();
 
     const updatedOrder = await Order.findById(order._id)
@@ -432,6 +499,7 @@ const completeDelivery = async (req, res, next) => {
 
 module.exports = {
   getCurrentOrder,
+  getMyOrders,
   updateOrderSlot,
   getOrderById,
   updateOrderStatus,

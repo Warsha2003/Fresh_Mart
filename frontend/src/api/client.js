@@ -58,10 +58,12 @@ client.interceptors.response.use(
         'Network request failed. Please check your backend connection.';
     }
 
-    console.error(
-      `[API Error] [${error.config?.method?.toUpperCase() || 'REQUEST'}] ${error.config?.url}:`,
-      message
-    );
+    if (!error.config?.suppressErrorLog) {
+      console.error(
+        `[API Error] [${error.config?.method?.toUpperCase() || 'REQUEST'}] ${error.config?.url}:`,
+        message
+      );
+    }
 
     const enhancedError = new Error(message);
     if (error.response) {

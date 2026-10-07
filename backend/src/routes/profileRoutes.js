@@ -10,6 +10,7 @@ const {
   changePassword,
   getAddresses,
   createAddress,
+  updateAddress,
   deleteAddress,
 } = require('../controllers/profileController');
 const { protect } = require('../middleware/auth');
@@ -21,6 +22,7 @@ router.put('/', updateProfile);
 router.put('/password', changePassword);
 router.get('/addresses', getAddresses);
 router.post('/addresses', createAddress);
+router.put('/addresses/:id', updateAddress);
 router.delete('/addresses/:id', deleteAddress);
 
 module.exports = router;
