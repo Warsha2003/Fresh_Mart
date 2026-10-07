@@ -18,10 +18,8 @@ const LoginScreen = ({ navigation, route }) => {
   const isOwner = role === 'owner';
   const isDelivery = role === 'delivery';
   const { login } = useAuth();
-  const [email, setEmail] = useState(
-    role === 'customer' ? 'kamal.perera@gmail.com' : ''
-  );
-  const [password, setPassword] = useState(role === 'customer' ? 'password123' : '');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
