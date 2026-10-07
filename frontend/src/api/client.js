@@ -9,7 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Read API URL from Expo environment variable (fallback to current Wi-Fi LAN IP, never localhost)
 export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL || 'http://192.168.8.102:5000/api';
+  process.env.EXPO_PUBLIC_API_URL || 'http://192.168.43.12:5000/api';
 
 // Small helper that logs the final base URL in development
 if (__DEV__) {

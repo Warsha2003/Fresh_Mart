@@ -1,11 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import {
   Animated,
-  SafeAreaView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import AppLogo from '../../components/AppLogo';
