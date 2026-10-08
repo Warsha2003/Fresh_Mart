@@ -13,6 +13,7 @@ import { colors } from '../theme/colors';
 // Navigation Components
 import BottomTabs from './BottomTabs';
 import DeliveryTabs from './DeliveryTabs';
+import OwnerTabs from './OwnerTabs';
 
 // Auth Screens
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -22,6 +23,8 @@ import RoleSelectScreen from '../screens/auth/RoleSelectScreen';
 
 // Owner Screens
 import OwnerDashboardScreen from '../screens/owner/OwnerDashboardScreen';
+import OwnerOrderPrepScreen from '../screens/owner/OwnerOrderPrepScreen';
+import OwnerManageSlotsScreen from '../screens/owner/OwnerManageSlotsScreen';
 
 // Checkout Scope Screens (Screens 07 - 10)
 import TimeSlotScreen from '../screens/checkout/TimeSlotScreen';
@@ -118,7 +121,7 @@ const RootNavigator = () => {
             {role === 'delivery' ? (
               <Stack.Screen name="DeliveryTabs" component={DeliveryTabs} />
             ) : role === 'owner' ? (
-              <Stack.Screen name="OwnerDashboard" component={OwnerDashboardScreen} />
+              <Stack.Screen name="OwnerTabs" component={OwnerTabs} />
             ) : (
               <Stack.Screen name="MainTabs" component={BottomTabs} />
             )}
@@ -134,6 +137,10 @@ const RootNavigator = () => {
             <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
             <Stack.Screen name="Favourites" component={FavouritesScreen} />
             <Stack.Screen name="Addresses" component={AddressesScreen} />
+            {/* Owner Screens */}
+<Stack.Screen name="OwnerDashboard" component={OwnerDashboardScreen} />
+<Stack.Screen name="OwnerOrderPrep" component={OwnerOrderPrepScreen} />
+<Stack.Screen name="OwnerManageSlots" component={OwnerManageSlotsScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
 
             {/* Delivery Partner Flow (Screens 21 to 25) */}
