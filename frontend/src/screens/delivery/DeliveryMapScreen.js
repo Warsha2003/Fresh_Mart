@@ -26,6 +26,15 @@ const DeliveryMapScreen = ({ navigation, route }) => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const rootNavigation = navigation.getParent()?.getParent();
+
+  const navigateRoot = (routeName, params = {}) => {
+    if (rootNavigation) {
+      rootNavigation.navigate(routeName, params);
+      return;
+    }
+    navigation.navigate(routeName, params);
+  };
 
   const loadOrder = useCallback(async () => {
     try {
@@ -104,7 +113,7 @@ const DeliveryMapScreen = ({ navigation, route }) => {
       setCompleting(true);
       const response = await client.patch(`/orders/${order._id}/complete-delivery`);
       const completedOrder = response.data?.data || order;
-      navigation.replace('DeliveryComplete', {
+      navigateRoot('DeliveryComplete', {
         orderId: order._id,
         orderNumber: completedOrder.orderNumber,
         amount: completedOrder.totalAmount,
@@ -244,7 +253,7 @@ const DeliveryMapScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         ) : !order ? (
           <TouchableOpacity
-            onPress={() => navigation.navigate('Dashboard')}
+            onPress={() => navigateRoot('DeliveryTabs', { screen: 'Dashboard' })}
             style={styles.statusMessage}
           >
             <Text style={styles.statusMessageText}>No active delivery. View deliveries</Text>

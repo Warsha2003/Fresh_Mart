@@ -28,12 +28,21 @@ const DeliveryCompleteScreen = ({ navigation, route }) => {
       : paymentMethod === 'card'
         ? 'Paid Online'
         : 'Not available';
+  const rootNavigation = navigation.getParent()?.getParent();
+
+  const navigateRoot = (routeName, params = {}) => {
+    if (rootNavigation) {
+      rootNavigation.navigate(routeName, params);
+      return;
+    }
+    navigation.navigate(routeName, params);
+  };
 
   return (
     <View style={styles.container}>
       <ScreenHeader
         title="Delivery Complete"
-        onBack={() => navigation.navigate('DeliveryDashboard')}
+        onBack={() => navigateRoot('DeliveryDashboard')}
         rightAction={
           <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Ionicons name="ellipsis-horizontal" size={20} color={colors.text} />
@@ -104,13 +113,13 @@ const DeliveryCompleteScreen = ({ navigation, route }) => {
         <View style={styles.actionsContainer}>
           <AppButton
             title="Back to Dashboard"
-            onPress={() => navigation.navigate('DeliveryDashboard')}
+            onPress={() => navigateRoot('DeliveryDashboard')}
             icon={<Ionicons name="speedometer-outline" size={18} color={colors.textInverse} />}
           />
 
           <TouchableOpacity
             style={styles.reportBtn}
-            onPress={() => navigation.navigate('ReportIssue', { orderNumber })}
+            onPress={() => navigateRoot('ReportIssue', { orderNumber })}
           >
             <Ionicons name="flag-outline" size={16} color={colors.textSecondary} style={{ marginRight: 6 }} />
             <Text style={styles.reportBtnText}>Report an Issue</Text>

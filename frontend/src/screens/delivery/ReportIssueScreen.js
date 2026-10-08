@@ -28,7 +28,7 @@ const ReportIssueScreen = ({ navigation, route }) => {
     setTimeout(() => {
       setSubmitting(false);
       Alert.alert('Issue reported', `Your report for order ${orderNumber} has been submitted.`);
-      navigation.navigate('DeliveryDashboard');
+      navigation.getParent()?.getParent()?.navigate('DeliveryDashboard');
     }, 500);
   };
 

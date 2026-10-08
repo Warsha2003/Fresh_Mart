@@ -52,10 +52,13 @@ const DeliveryAlertScreen = ({ navigation, route }) => {
 
   const handleStartDelivery = () => {
     if (!order?._id) return;
-    navigation.navigate(
-      order.status === 'out_for_delivery' ? 'DeliveryMap' : 'DeliveryOrderDetails',
-      { orderId: order._id }
-    );
+
+    if (order.status === 'out_for_delivery') {
+      navigation.navigate('DeliveryMap', { orderId: order._id });
+      return;
+    }
+
+    navigation.navigate('DeliveryOrderDetails', { orderId: order._id });
   };
 
   const address = order?.deliveryAddress

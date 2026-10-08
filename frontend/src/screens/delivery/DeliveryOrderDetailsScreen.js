@@ -23,7 +23,7 @@ import { colors } from '../../theme/colors';
 import ScreenHeader from '../../components/ScreenHeader';
 import AppButton from '../../components/AppButton';
 import client from '../../api/client';
-import { getOrderItemAsset } from '../../config/productAssets';
+import { getProductAsset } from '../../config/productAssets';
 
 const DeliveryOrderDetailsScreen = ({ navigation, route }) => {
   const { orderId } = route.params || {};
@@ -31,6 +31,15 @@ const DeliveryOrderDetailsScreen = ({ navigation, route }) => {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [startingDelivery, setStartingDelivery] = useState(false);
+  const rootNavigation = navigation.getParent()?.getParent();
+
+  const navigateRoot = (routeName, params = {}) => {
+    if (rootNavigation) {
+      rootNavigation.navigate(routeName, params);
+      return;
+    }
+    navigation.navigate(routeName, params);
+  };
 
   const loadOrder = useCallback(async () => {
     if (!orderId) {
@@ -63,7 +72,7 @@ const DeliveryOrderDetailsScreen = ({ navigation, route }) => {
         ? 'Paid Online'
         : 'Payment details unavailable';
   const featuredItem = order?.items?.[0];
-  const featuredImage = getOrderItemAsset(featuredItem);
+  const featuredImage = getProductAsset(featuredItem?.imageKey);
 
   const handleCallCustomer = () => {
     if (!customerPhone) {
@@ -90,7 +99,7 @@ const DeliveryOrderDetailsScreen = ({ navigation, route }) => {
     if (!order?._id) return;
 
     if (order.status === 'out_for_delivery') {
-      navigation.navigate('DeliveryMap', { orderId: order._id });
+      navigateRoot('DeliveryMap', { orderId: order._id });
       return;
     }
 
@@ -101,7 +110,7 @@ const DeliveryOrderDetailsScreen = ({ navigation, route }) => {
         ...currentOrder,
         status: 'out_for_delivery',
       }));
-      navigation.navigate('DeliveryMap', { orderId: order._id });
+      navigateRoot('DeliveryMap', { orderId: order._id });
     } catch (error) {
       Alert.alert('Could not start delivery', error.message);
     } finally {
@@ -205,7 +214,7 @@ const DeliveryOrderDetailsScreen = ({ navigation, route }) => {
             {(order.items || []).map((item, index) => (
               <View style={styles.photoItemCard} key={`${item._id || item.name}-${index}`}>
                 <View style={styles.itemImageContainer}>
-                  <Image source={getOrderItemAsset(item)} style={styles.itemImage} resizeMode="cover" />
+                  <Image source={getProductAsset(item.imageKey)} style={styles.itemImage} resizeMode="cover" />
                   <View style={styles.quantityBadge}>
                     <Text style={styles.quantityText}>×{item.quantity}</Text>
                   </View>

@@ -10,6 +10,7 @@ import { colors } from '../theme/colors';
 
 import DeliveryDashboardScreen from '../screens/delivery/DeliveryDashboardScreen';
 import DeliveryAlertScreen from '../screens/delivery/DeliveryAlertScreen';
+import DeliveryOrderDetailsScreen from '../screens/delivery/DeliveryOrderDetailsScreen';
 import DeliveryMapScreen from '../screens/delivery/DeliveryMapScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 
@@ -48,6 +49,7 @@ const DeliveryTabs = () => {
     >
       <Tab.Screen name="Dashboard" component={DeliveryDashboardScreen} />
       <Tab.Screen name="Deliveries" component={DeliveryAlertScreen} />
+      <Tab.Screen name="OrderDetails" component={DeliveryOrderDetailsScreen} />
       <Tab.Screen name="Map" component={DeliveryMapScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
