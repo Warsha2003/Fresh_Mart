@@ -58,6 +58,7 @@ npm install
 npm run dev   # or npm start
 ```
 - Health check: `http://localhost:5000/api/health`
+- Copy `backend/.env.example` to `backend/.env` and set `MONGODB_URI` and a private `JWT_SECRET`.
 
 ### Frontend
 ```bash

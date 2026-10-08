@@ -158,6 +158,7 @@ const getMe = async (req, res) => {
       name: req.user.name,
       email: req.user.email,
       phone: req.user.phone,
+      avatar: req.user.avatar,
       role: req.user.role || 'customer',
       stats: req.user.stats,
     },

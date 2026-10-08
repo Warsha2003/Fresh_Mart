@@ -2,9 +2,20 @@
  * Customer Context
  * Keeps product, cart, selected address, and favourites state in one place.
  */
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { AppState, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import client from '../api/client';
 import { useAuth } from './AuthContext';
+import { colors } from '../theme/colors';
 
 const emptyCart = {
   items: [],
@@ -27,7 +38,7 @@ const getCategoriesFromProducts = (items) => {
 const CustomerContext = createContext();
 
 export const CustomerProvider = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState(['All']);
   const [cart, setCart] = useState(emptyCart);
@@ -36,6 +47,13 @@ export const CustomerProvider = ({ children }) => {
   const [favourites, setFavourites] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
+  const [inAppNotification, setInAppNotification] = useState(null);
+  const latestNotificationId = useRef(null);
+  const latestNotificationCreatedAt = useRef(0);
+  const notificationBaselineLoaded = useRef(false);
+  const notificationToastTimer = useRef(null);
+  const notificationRequestInFlight = useRef(false);
 
   const favouriteProductIds = useMemo(
     () => favourites.map((product) => product.id || product._id),
@@ -228,6 +246,78 @@ export const CustomerProvider = ({ children }) => {
     [favouriteProductIds]
   );
 
+  const refreshNotificationCount = useCallback(async ({ showToast = false } = {}) => {
+    if (!isAuthenticated || user?.role !== 'customer') {
+      setNotificationUnreadCount(0);
+      return 0;
+    }
+    if (notificationRequestInFlight.current) return;
+
+    notificationRequestInFlight.current = true;
+    try {
+      const response = await client.get('/notifications?limit=1', { suppressErrorLog: true });
+      const latest = response.data?.data?.[0];
+      const latestId = latest?._id;
+      const latestCreatedAt = latest?.createdAt ? new Date(latest.createdAt).getTime() : 0;
+      if (
+        notificationBaselineLoaded.current &&
+        latestId &&
+        latestId !== latestNotificationId.current &&
+        latestCreatedAt > latestNotificationCreatedAt.current &&
+        showToast
+      ) {
+        setInAppNotification(latest);
+        if (notificationToastTimer.current) clearTimeout(notificationToastTimer.current);
+        notificationToastTimer.current = setTimeout(() => setInAppNotification(null), 5000);
+      }
+      if (latestId) {
+        latestNotificationId.current = latestId;
+        latestNotificationCreatedAt.current = latestCreatedAt;
+      }
+      notificationBaselineLoaded.current = true;
+
+      const count = Number(response.data?.unreadCount) || 0;
+      setNotificationUnreadCount(count);
+      return count;
+    } finally {
+      notificationRequestInFlight.current = false;
+    }
+  }, [isAuthenticated, user?.role]);
+
+  useEffect(() => {
+    latestNotificationId.current = null;
+    latestNotificationCreatedAt.current = 0;
+    notificationBaselineLoaded.current = false;
+    if (!isAuthenticated || user?.role !== 'customer') {
+      setNotificationUnreadCount(0);
+      return undefined;
+    }
+
+    refreshNotificationCount().catch((requestError) => {
+      console.warn('[CustomerContext] Unable to refresh notifications:', requestError.message);
+    });
+    const interval = setInterval(() => {
+      if (AppState.currentState === 'active') {
+        refreshNotificationCount({ showToast: true }).catch((requestError) => {
+          console.warn('[CustomerContext] Unable to refresh notifications:', requestError.message);
+        });
+      }
+    }, 20000);
+    const appStateSubscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        refreshNotificationCount({ showToast: true }).catch((requestError) => {
+          console.warn('[CustomerContext] Unable to refresh notifications:', requestError.message);
+        });
+      }
+    });
+
+    return () => {
+      clearInterval(interval);
+      appStateSubscription.remove();
+      if (notificationToastTimer.current) clearTimeout(notificationToastTimer.current);
+    };
+  }, [isAuthenticated, refreshNotificationCount, user?.id, user?._id, user?.role]);
+
   const value = useMemo(
     () => ({
       products,
@@ -238,6 +328,8 @@ export const CustomerProvider = ({ children }) => {
       addresses,
       selectedAddress,
       favourites,
+      notificationUnreadCount,
+      refreshNotificationCount,
       favouriteProductIds,
       isLoading,
       error,
@@ -266,6 +358,8 @@ export const CustomerProvider = ({ children }) => {
       addresses,
       selectedAddress,
       favourites,
+      notificationUnreadCount,
+      refreshNotificationCount,
       favouriteProductIds,
       isLoading,
       error,
@@ -289,7 +383,53 @@ export const CustomerProvider = ({ children }) => {
     ]
   );
 
-  return <CustomerContext.Provider value={value}>{children}</CustomerContext.Provider>;
+  return (
+    <CustomerContext.Provider value={value}>
+      <View style={styles.providerContainer}>
+        {children}
+        {inAppNotification ? (
+          <View style={styles.toast}>
+            <Ionicons name="notifications" size={19} color={colors.textInverse} />
+            <View style={styles.toastText}>
+              <Text style={styles.toastTitle}>{inAppNotification.title}</Text>
+              <Text style={styles.toastMessage} numberOfLines={2}>{inAppNotification.message}</Text>
+            </View>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss notification"
+              onPress={() => setInAppNotification(null)}
+            >
+              <Ionicons name="close" size={20} color={colors.textInverse} />
+            </TouchableOpacity>
+          </View>
+        ) : null}
+      </View>
+    </CustomerContext.Provider>
+  );
 };
+
+const styles = StyleSheet.create({
+  providerContainer: { flex: 1 },
+  toast: {
+    alignItems: 'center',
+    backgroundColor: colors.primaryDark,
+    borderRadius: 14,
+    elevation: 8,
+    flexDirection: 'row',
+    gap: 10,
+    left: 14,
+    padding: 13,
+    position: 'absolute',
+    right: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    top: 48,
+    zIndex: 10,
+  },
+  toastText: { flex: 1 },
+  toastTitle: { color: colors.textInverse, fontSize: 13, fontWeight: '800' },
+  toastMessage: { color: '#E8F5E9', fontSize: 12, marginTop: 3 },
+});
 
 export const useCustomer = () => useContext(CustomerContext);

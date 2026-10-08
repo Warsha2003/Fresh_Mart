@@ -28,6 +28,7 @@ import CustomerBottomBar, { CUSTOMER_BOTTOM_BAR_HEIGHT } from '../../components/
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const TimeSlotScreen = ({ navigation, route }) => {
+  const isChangingExistingOrder = Boolean(route.params?.changeExistingOrder && route.params?.orderId);
   const initialFulfillmentType = route.params?.fulfillmentType || 'pickup';
   const [fulfillmentType, setFulfillmentType] = useState(initialFulfillmentType);
   const [dateList, setDateList] = useState([]);
@@ -96,7 +97,9 @@ const TimeSlotScreen = ({ navigation, route }) => {
 
   const fetchCurrentOrder = async () => {
     try {
-      const res = await client.get('/orders/current');
+      const res = route.params?.orderId
+        ? await client.get(`/orders/${route.params.orderId}`)
+        : await client.get('/orders/current');
       if (res.data?.data) {
         setOrder(res.data.data);
         if (!route.params?.fulfillmentType && res.data.data.fulfillmentType) {
@@ -138,19 +141,26 @@ const TimeSlotScreen = ({ navigation, route }) => {
 
     try {
       setSubmitting(true);
-      const res = await client.put(`/orders/${order._id}/slot`, {
+      const updatePayload = {
         slotId: selectedSlot._id,
         fulfillmentType,
-        promoCode,
-      });
+      };
+      if (!isChangingExistingOrder) updatePayload.promoCode = promoCode;
+      const res = await client.put(`/orders/${order._id}/slot`, updatePayload);
 
       if (res.data?.success) {
-        navigation.navigate('Payment', {
-          orderId: res.data.data._id,
-          slot: selectedSlot,
-          fulfillmentType,
-          promoCode,
-        });
+        if (isChangingExistingOrder) {
+          Alert.alert('Time slot updated', 'Your order now has the new delivery or pickup slot.', [
+            { text: 'OK', onPress: () => navigation.goBack() },
+          ]);
+        } else {
+          navigation.navigate('Payment', {
+            orderId: res.data.data._id,
+            slot: selectedSlot,
+            fulfillmentType,
+            promoCode,
+          });
+        }
       }
     } catch (error) {
       Alert.alert('Reservation Failed', error.message || 'Slot could not be reserved.');
@@ -167,8 +177,8 @@ const TimeSlotScreen = ({ navigation, route }) => {
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Toggle Fulfillment Switch */}
-        <View style={styles.toggleContainer}>
+        {/* Checkout selects fulfillment; placed orders may only change their time slot. */}
+        {!isChangingExistingOrder ? <View style={styles.toggleContainer}>
           <TouchableOpacity
             style={[styles.toggleBtn, fulfillmentType === 'pickup' && styles.toggleBtnActive]}
             onPress={() => {
@@ -218,7 +228,7 @@ const TimeSlotScreen = ({ navigation, route }) => {
               Delivery
             </Text>
           </TouchableOpacity>
-        </View>
+        </View> : null}
 
         {order ? (
           <>
@@ -296,7 +306,7 @@ const TimeSlotScreen = ({ navigation, route }) => {
       {/* Floating Bottom Bar */}
       <View style={[styles.bottomBar, { bottom: CUSTOMER_BOTTOM_BAR_HEIGHT + insets.bottom }]}>
         <AppButton
-          title="Continue to Payment"
+          title={isChangingExistingOrder ? 'Save new slot' : 'Continue to Payment'}
           onPress={handleContinue}
           loading={submitting}
           disabled={!selectedSlot || submitting || loadingSlots}

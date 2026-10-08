@@ -22,7 +22,6 @@ const LoginScreen = ({ navigation, route }) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
-
   const title = isOwner ? 'Owner Portal' : isDelivery ? 'Ready to deliver?' : 'Welcome back';
   const subtitle = isOwner
     ? 'Manage inventory, orders & statistics'
@@ -98,18 +97,6 @@ const LoginScreen = ({ navigation, route }) => {
         value={password}
       />
 
-      <TouchableOpacity
-        accessibilityRole="button"
-        onPress={() =>
-          setErrors({
-            form: 'Password reset is not available yet. Please contact FreshMart support.',
-          })
-        }
-        style={styles.forgotLink}
-      >
-        <Text style={styles.forgotText}>Forgot password?</Text>
-      </TouchableOpacity>
-
       <PrimaryButton
         loading={loading}
         onPress={handleLogin}
@@ -123,7 +110,6 @@ const LoginScreen = ({ navigation, route }) => {
           <Text style={styles.errorText}>{errors.form}</Text>
         </View>
       )}
-
       <View style={styles.footer}>
         <Text style={styles.footerText}>{isOwner ? 'Not an owner? ' : 'New here? '}</Text>
         <TouchableOpacity
@@ -161,15 +147,6 @@ const styles = StyleSheet.create({
     color: theme.colors.muted,
     fontSize: 12,
     marginBottom: 15,
-  },
-  forgotLink: {
-    alignSelf: 'flex-end',
-    marginTop: -3,
-    paddingVertical: 3,
-  },
-  forgotText: {
-    color: theme.colors.muted,
-    fontSize: 12,
   },
   primaryButton: {
     marginTop: 13,

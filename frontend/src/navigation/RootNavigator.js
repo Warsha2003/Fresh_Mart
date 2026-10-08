@@ -34,6 +34,7 @@ import OrdersScreen from '../screens/orders/OrdersScreen';
 import ProductDetailsScreen from '../screens/products/ProductDetailsScreen';
 import FavouritesScreen from '../screens/profile/FavouritesScreen';
 import AddressesScreen from '../screens/profile/AddressesScreen';
+import NotificationsScreen from '../screens/profile/NotificationsScreen';
 
 // Delivery Partner Scope Screens (Screens 21 - 25)
 import DeliveryDashboardScreen from '../screens/delivery/DeliveryDashboardScreen';
@@ -132,6 +133,7 @@ const RootNavigator = () => {
             <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
             <Stack.Screen name="Favourites" component={FavouritesScreen} />
             <Stack.Screen name="Addresses" component={AddressesScreen} />
+            <Stack.Screen name="Notifications" component={NotificationsScreen} />
 
             {/* Delivery Partner Flow (Screens 21 to 25) */}
             <Stack.Screen name="DeliveryDashboard" component={DeliveryDashboardScreen} />

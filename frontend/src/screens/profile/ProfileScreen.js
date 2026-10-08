@@ -3,6 +3,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Modal,
   ScrollView,
   StyleSheet,
@@ -20,13 +21,15 @@ import { colors } from '../../theme/colors';
 
 const ProfileScreen = ({ navigation }) => {
   const { user, logout, updateUserData } = useAuth();
-  const { addresses, favourites } = useCustomer();
+  const { addresses, favourites, notificationUnreadCount } = useCustomer();
   const [profile, setProfile] = useState(user);
   const [loading, setLoading] = useState(false);
   const [profileEditorVisible, setProfileEditorVisible] = useState(false);
   const [passwordEditorVisible, setPasswordEditorVisible] = useState(false);
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [avatar, setAvatar] = useState(user?.avatar || '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -52,6 +55,8 @@ const ProfileScreen = ({ navigation }) => {
         setProfile(loadedProfile);
         setName(loadedProfile.name || '');
         setPhone(loadedProfile.phone || '');
+        setEmail(loadedProfile.email || '');
+        setAvatar(loadedProfile.avatar || '');
       }
     } catch (error) {
       Alert.alert('Unable to load profile', error.message);
@@ -69,9 +74,18 @@ const ProfileScreen = ({ navigation }) => {
       Alert.alert('Name required', 'Please enter your name.');
       return;
     }
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+      Alert.alert('Invalid email', 'Please enter a valid email address.');
+      return;
+    }
     try {
       setSaving(true);
-      const response = await client.put('/profile', { name: name.trim(), phone: phone.trim() });
+      const response = await client.put('/profile', {
+        name: name.trim(),
+        phone: phone.trim(),
+        email: email.trim().toLowerCase(),
+        avatar: avatar.trim(),
+      });
       const updated = response.data?.data;
       setProfile((current) => ({ ...current, ...updated }));
       updateUserData(updated);
@@ -88,8 +102,8 @@ const ProfileScreen = ({ navigation }) => {
       Alert.alert('Required fields', 'Enter your current password and confirm the new password.');
       return;
     }
-    if (newPassword.length < 6) {
-      Alert.alert('Password too short', 'Use at least 6 characters for your new password.');
+    if (newPassword.length < 8) {
+      Alert.alert('Password too short', 'Use at least 8 characters for your new password.');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -133,7 +147,13 @@ const ProfileScreen = ({ navigation }) => {
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.userCard}>
-            <View style={styles.avatar}><Text style={styles.avatarText}>{initials || 'FM'}</Text></View>
+            <View style={styles.avatar}>
+              {currentUser?.avatar ? (
+                <Image source={{ uri: currentUser.avatar }} style={styles.avatarImage} />
+              ) : (
+                <Text style={styles.avatarText}>{initials || 'FM'}</Text>
+              )}
+            </View>
             <View style={styles.userInfo}>
               <Text style={styles.userName}>{currentUser?.name || 'FreshMart customer'}</Text>
               <Text style={styles.userDetail}>{currentUser?.email || ''}</Text>
@@ -165,9 +185,10 @@ const ProfileScreen = ({ navigation }) => {
             <MenuItem
               icon="notifications-outline"
               title="Notifications"
+              subtitle={notificationUnreadCount > 0 ? `${notificationUnreadCount} unread` : 'View order updates'}
               iconColor="#DB2777"
               iconBackground="#FCE7F3"
-              onPress={() => Alert.alert('Notifications', 'Push notifications are enabled.')}
+              onPress={() => navigation.navigate('Notifications')}
             />
             <MenuItem
               icon="settings-outline"
@@ -219,6 +240,10 @@ const ProfileScreen = ({ navigation }) => {
             <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Your name" placeholderTextColor={colors.textLight} />
             <Text style={styles.inputLabel}>Phone</Text>
             <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="Phone number" placeholderTextColor={colors.textLight} keyboardType="phone-pad" />
+            <Text style={styles.inputLabel}>Email</Text>
+            <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="Email address" placeholderTextColor={colors.textLight} keyboardType="email-address" autoCapitalize="none" />
+            <Text style={styles.inputLabel}>Avatar image URL</Text>
+            <TextInput style={styles.input} value={avatar} onChangeText={setAvatar} placeholder="https://example.com/avatar.jpg" placeholderTextColor={colors.textLight} autoCapitalize="none" keyboardType="url" />
             <AppButton title="Save profile" onPress={saveProfile} loading={saving} />
           </View>
         </View>
@@ -240,7 +265,7 @@ const ProfileScreen = ({ navigation }) => {
           <View style={styles.modalCard}>
             <ModalHeader title="Change password" onClose={() => setPasswordEditorVisible(false)} />
             <TextInput style={styles.input} value={currentPassword} onChangeText={setCurrentPassword} placeholder="Current password" placeholderTextColor={colors.textLight} secureTextEntry />
-            <TextInput style={styles.input} value={newPassword} onChangeText={setNewPassword} placeholder="New password (6+ characters)" placeholderTextColor={colors.textLight} secureTextEntry />
+            <TextInput style={styles.input} value={newPassword} onChangeText={setNewPassword} placeholder="New password (8+ characters)" placeholderTextColor={colors.textLight} secureTextEntry />
             <TextInput style={styles.input} value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Confirm new password" placeholderTextColor={colors.textLight} secureTextEntry />
             <AppButton title="Update password" onPress={changePassword} loading={saving} />
           </View>
@@ -295,6 +320,7 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', flex: 1, justifyContent: 'center' },
   userCard: { alignItems: 'center', backgroundColor: colors.card, borderColor: colors.border, borderRadius: 17, borderWidth: 1, flexDirection: 'row', padding: 16 },
   avatar: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 29, height: 58, justifyContent: 'center', width: 58 },
+  avatarImage: { borderRadius: 29, height: 58, width: 58 },
   avatarText: { color: colors.textInverse, fontSize: 19, fontWeight: '800' },
   userInfo: { flex: 1, marginLeft: 13 },
   userName: { color: colors.text, fontSize: 16, fontWeight: '800' },

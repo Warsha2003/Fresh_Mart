@@ -40,6 +40,34 @@ const OrdersScreen = ({ navigation }) => {
     loadOrders();
   }, [loadOrders]));
 
+  const permanentlyDeleteOrder = (order) => {
+    Alert.alert(
+      'Delete cancelled order',
+      `Permanently delete ${order.orderNumber}? This cannot be undone.`,
+      [
+        { text: 'Keep order', style: 'cancel' },
+        {
+          text: 'Delete permanently',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await client.delete(`/orders/${order._id}`);
+              setOrders((current) => current.filter((item) => item._id !== order._id));
+            } catch (error) {
+              Alert.alert('Unable to delete order', error.message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const changeOrderSlot = (order) => navigation.navigate('TimeSlot', {
+    orderId: order._id,
+    changeExistingOrder: true,
+    fulfillmentType: order.fulfillmentType,
+  });
+
   return (
     <View style={styles.container}>
       <ScreenHeader title="My Orders" onBack={() => navigation.goBack()} />
@@ -57,35 +85,59 @@ const OrdersScreen = ({ navigation }) => {
       ) : (
         <ScrollView contentContainerStyle={styles.list}>
           {orders.map((order) => (
-            <TouchableOpacity
-              key={order._id}
-              style={styles.orderCard}
-              onPress={() => navigation.navigate('OrderTracking', { orderId: order._id })}
-              activeOpacity={0.85}
-            >
-              <View style={styles.orderTop}>
-                <View style={styles.orderIcon}>
-                  <Ionicons name="receipt-outline" size={19} color={colors.primary} />
+            <View key={order._id} style={styles.orderCard}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('OrderTracking', { orderId: order._id })}
+                activeOpacity={0.85}
+              >
+                <View style={styles.orderTop}>
+                  <View style={styles.orderIcon}>
+                    <Ionicons name="receipt-outline" size={19} color={colors.primary} />
+                  </View>
+                  <View style={styles.orderRef}>
+                    <Text style={styles.orderNumber}>{order.orderNumber}</Text>
+                    <Text style={styles.orderDate}>{formatDate(order.createdAt)}</Text>
+                  </View>
+                  <View style={[styles.status, order.status === 'cancelled' && styles.statusCancelled]}>
+                    <Text style={[styles.statusText, order.status === 'cancelled' && styles.cancelledText]}>
+                      {(order.status || '').replace(/_/g, ' ')}
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.orderRef}>
-                  <Text style={styles.orderNumber}>{order.orderNumber}</Text>
-                  <Text style={styles.orderDate}>{formatDate(order.createdAt)}</Text>
+                <Text style={styles.itemPreview} numberOfLines={1}>
+                  {order.items?.map((item) => `${item.name} ×${item.quantity}`).join(', ') || 'Order items'}
+                </Text>
+                <View style={styles.orderBottom}>
+                  <Text style={styles.itemCount}>{order.items?.reduce((count, item) => count + item.quantity, 0) || 0} items</Text>
+                  <Text style={styles.amount}>Rs. {order.totalAmount}</Text>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
                 </View>
-                <View style={[styles.status, order.status === 'cancelled' && styles.statusCancelled]}>
-                  <Text style={[styles.statusText, order.status === 'cancelled' && styles.cancelledText]}>
-                    {(order.status || '').replace(/_/g, ' ')}
-                  </Text>
+              </TouchableOpacity>
+              {order.status === 'placed' || order.status === 'cancelled' ? (
+                <View style={styles.actions}>
+                  {order.status === 'placed' ? (
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      onPress={() => changeOrderSlot(order)}
+                      style={styles.actionButton}
+                    >
+                      <Ionicons name="calendar-outline" size={16} color={colors.primary} />
+                      <Text style={styles.actionText}>Change slot</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  {order.status === 'cancelled' ? (
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      onPress={() => permanentlyDeleteOrder(order)}
+                      style={styles.actionButton}
+                    >
+                      <Ionicons name="trash-outline" size={16} color={colors.danger} />
+                      <Text style={[styles.actionText, styles.deleteText]}>Delete permanently</Text>
+                    </TouchableOpacity>
+                  ) : null}
                 </View>
-              </View>
-              <Text style={styles.itemPreview} numberOfLines={1}>
-                {order.items?.map((item) => `${item.name} ×${item.quantity}`).join(', ') || 'Order items'}
-              </Text>
-              <View style={styles.orderBottom}>
-                <Text style={styles.itemCount}>{order.items?.reduce((count, item) => count + item.quantity, 0) || 0} items</Text>
-                <Text style={styles.amount}>Rs. {order.totalAmount}</Text>
-                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-              </View>
-            </TouchableOpacity>
+              ) : null}
+            </View>
           ))}
         </ScrollView>
       )}
@@ -109,6 +161,10 @@ const styles = StyleSheet.create({
   cancelledText: { color: colors.danger },
   itemPreview: { color: colors.textSecondary, fontSize: 12, marginTop: 14 },
   orderBottom: { alignItems: 'center', borderTopColor: colors.borderLight, borderTopWidth: 1, flexDirection: 'row', marginTop: 12, paddingTop: 11 },
+  actions: { borderTopColor: colors.borderLight, borderTopWidth: 1, flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12, paddingTop: 10 },
+  actionButton: { alignItems: 'center', flexDirection: 'row', gap: 6, paddingHorizontal: 7, paddingVertical: 5 },
+  actionText: { color: colors.primary, fontSize: 12, fontWeight: '700' },
+  deleteText: { color: colors.danger },
   itemCount: { color: colors.textSecondary, flex: 1, fontSize: 12 },
   amount: { color: colors.text, fontSize: 14, fontWeight: '800', marginRight: 8 },
   emptyTitle: { color: colors.text, fontSize: 17, fontWeight: '800', marginTop: 14 },

@@ -29,7 +29,7 @@ const orderSchema = new mongoose.Schema(
     orderNumber: {
       type: String,
       required: true,
-      unique: true, // e.g. "#FM-98432"
+      unique: true, // e.g. "#CD-98432"
     },
     user: {
       type: mongoose.Schema.Types.ObjectId,

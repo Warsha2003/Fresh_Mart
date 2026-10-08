@@ -2,12 +2,10 @@
  * Screen 11: Order Tracking
  * Matches Figma design 11_order-tr...
  * 
- * CRUD OPERATIONS:
- * 1. READ: Polls/fetches order status & item list (GET /api/orders/:id)
- * 2. UPDATE: Advances order status for live viva demonstration (PATCH /api/orders/:id/status)
- * 3. DELETE: Cancels the active order with confirmation modal (DELETE /api/orders/:id)
+ * Reads order status and details, and lets customers cancel placed orders or change
+ * the fulfillment slot while the order is still placed.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -23,6 +21,7 @@ import ScreenHeader from '../../components/ScreenHeader';
 import StatusStep from '../../components/StatusStep';
 import AppButton from '../../components/AppButton';
 import client from '../../api/client';
+import { useFocusEffect } from '@react-navigation/native';
 import CustomerBottomBar from '../../components/CustomerBottomBar';
 
 const statusSequence = ['placed', 'packed', 'out_for_delivery', 'delivered'];
@@ -31,15 +30,10 @@ const OrderTrackingScreen = ({ navigation, route }) => {
   const { orderId } = route.params || {};
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState(false);
   const [cancelling, setCancelling] = useState(false);
 
-  useEffect(() => {
-    fetchOrderDetails();
-  }, [orderId]);
-
   // CRUD Operation 1: READ Order Details & Status
-  const fetchOrderDetails = async () => {
+  const fetchOrderDetails = useCallback(async () => {
     if (!orderId) {
       setOrder(null);
       setLoading(false);
@@ -60,41 +54,17 @@ const OrderTrackingScreen = ({ navigation, route }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [orderId]);
 
-  // CRUD Operation 2: UPDATE Status (Viva Demo helper)
-  const handleSimulateNextStep = async () => {
-    if (!order) return;
-    const currentIndex = statusSequence.indexOf(order.status);
-    if (currentIndex < statusSequence.length - 1) {
-      const nextStatus = statusSequence[currentIndex + 1];
-      try {
-        setUpdating(true);
-        const res = await client.patch(`/orders/${order._id}/status`, {
-          status: nextStatus,
-        });
-        if (res.data?.data) {
-          setOrder(res.data.data);
-        }
-      } catch (err) {
-        Alert.alert('Update Failed', err.message);
-      } finally {
-        setUpdating(false);
-      }
-    } else {
-      Alert.alert('Order Completed', 'Order has already reached the Delivered status.');
-    }
-  };
+  useFocusEffect(useCallback(() => {
+    fetchOrderDetails();
+  }, [fetchOrderDetails]));
 
-  // CRUD Operation 3: DELETE / Cancel Order
+  // Cancel a placed order by changing its status.
   const handleCancelOrder = () => {
     if (!order) return;
-    if (order.status === 'delivered') {
-      Alert.alert('Cannot Cancel', 'Delivered orders cannot be cancelled.');
-      return;
-    }
-    if (order.status === 'cancelled') {
-      Alert.alert('Already Cancelled', 'This order is already cancelled.');
+    if (order.status !== 'placed') {
+      Alert.alert('Cannot Cancel', 'Only placed orders can be cancelled.');
       return;
     }
 
@@ -109,7 +79,7 @@ const OrderTrackingScreen = ({ navigation, route }) => {
           onPress: async () => {
             try {
               setCancelling(true);
-              const res = await client.delete(`/orders/${order._id}`);
+              const res = await client.patch(`/orders/${order._id}/cancel`);
               if (res.data?.success) {
                 Alert.alert('Order Cancelled', 'Your order has been cancelled and slot released.');
                 setOrder(res.data.data);
@@ -124,6 +94,12 @@ const OrderTrackingScreen = ({ navigation, route }) => {
       ]
     );
   };
+
+  const handleChangeSlot = () => navigation.navigate('TimeSlot', {
+    orderId: order._id,
+    changeExistingOrder: true,
+    fulfillmentType: order.fulfillmentType,
+  });
 
   const getStepStatus = (stepName) => {
     if (!order) return 'pending';
@@ -224,19 +200,6 @@ const OrderTrackingScreen = ({ navigation, route }) => {
               />
             </View>
 
-            {/* Viva Demonstration Helper */}
-            {order.status !== 'cancelled' && order.status !== 'delivered' && (
-              <TouchableOpacity
-                style={styles.vivaDemoBtn}
-                onPress={handleSimulateNextStep}
-                disabled={updating}
-              >
-                <Ionicons name="play-forward-outline" size={16} color={colors.primary} />
-                <Text style={styles.vivaDemoText}>
-                  {updating ? 'Advancing status...' : 'Viva Demo: Advance Status Step'}
-                </Text>
-              </TouchableOpacity>
-            )}
           </View>
 
           {/* Items Summary Card */}
@@ -288,7 +251,16 @@ const OrderTrackingScreen = ({ navigation, route }) => {
               onPress={() => navigation.navigate('MainTabs')}
             />
 
-            {order.status !== 'cancelled' && order.status !== 'delivered' && (
+            {order.status === 'placed' ? (
+              <AppButton
+                title="Change delivery slot"
+                variant="outline"
+                onPress={handleChangeSlot}
+                icon={<Ionicons name="calendar-outline" size={18} color={colors.primary} />}
+                style={styles.actionButton}
+              />
+            ) : null}
+            {order.status === 'placed' ? (
               <AppButton
                 title="Cancel Order"
                 variant="danger"
@@ -296,7 +268,7 @@ const OrderTrackingScreen = ({ navigation, route }) => {
                 loading={cancelling}
                 icon={<Ionicons name="trash-outline" size={18} color={colors.danger} />}
               />
-            )}
+            ) : null}
             <CustomerBottomBar navigation={navigation} />
           </View>
         </ScrollView>
@@ -415,21 +387,6 @@ const styles = StyleSheet.create({
     paddingLeft: 4,
     paddingTop: 4,
   },
-  vivaDemoBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primaryLight,
-    paddingVertical: 10,
-    borderRadius: 12,
-    marginTop: 6,
-  },
-  vivaDemoText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.primaryDark,
-    marginLeft: 6,
-  },
   rowBetween: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -494,6 +451,9 @@ const styles = StyleSheet.create({
   },
   actionsContainer: {
     marginTop: 8,
+  },
+  actionButton: {
+    marginBottom: 10,
   },
 });
 

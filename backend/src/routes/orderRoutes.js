@@ -11,6 +11,7 @@ const {
   getOrderById,
   updateOrderStatus,
   cancelOrder,
+  deleteOrder,
   getDeliveryOrders,
   getDeliveryOrderById,
   startDelivery,
@@ -29,6 +30,7 @@ router.patch('/:id/complete-delivery', completeDelivery);
 router.put('/:id/slot', updateOrderSlot);
 router.get('/:id', getOrderById);
 router.patch('/:id/status', updateOrderStatus);
-router.delete('/:id', cancelOrder);
+router.patch('/:id/cancel', cancelOrder);
+router.delete('/:id', deleteOrder);
 
 module.exports = router;

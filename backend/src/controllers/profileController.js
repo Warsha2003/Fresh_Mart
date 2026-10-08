@@ -28,12 +28,12 @@ const getProfile = async (req, res, next) => {
   }
 };
 
-// @desc    Update profile info (name, phone)
+// @desc    Update profile info
 // @route   PUT /api/profile
 // @access  Private
 const updateProfile = async (req, res, next) => {
   try {
-    const { name, phone } = req.body;
+    const { name, phone, email, avatar } = req.body;
 
     const user = await User.findById(req.user._id);
     if (!user) {
@@ -52,8 +52,35 @@ const updateProfile = async (req, res, next) => {
       }
       user.phone = phone.trim();
     }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'email')) {
+      if (typeof email !== 'string' || !/^\S+@\S+\.\S+$/.test(email.trim())) {
+        return res.status(400).json({ success: false, message: 'Please provide a valid email address.' });
+      }
+      const normalizedEmail = email.toLowerCase().trim();
+      const existingUser = await User.findOne({
+        email: normalizedEmail,
+        _id: { $ne: user._id },
+      });
+      if (existingUser) {
+        return res.status(409).json({ success: false, message: 'That email address is already in use.' });
+      }
+      user.email = normalizedEmail;
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'avatar')) {
+      if (typeof avatar !== 'string' || avatar.length > 2048) {
+        return res.status(400).json({ success: false, message: 'Avatar must be a text URL of at most 2048 characters.' });
+      }
+      user.avatar = avatar.trim();
+    }
 
-    await user.save();
+    try {
+      await user.save();
+    } catch (error) {
+      if (error.code === 11000 && error.keyPattern?.email) {
+        return res.status(409).json({ success: false, message: 'That email address is already in use.' });
+      }
+      throw error;
+    }
 
     res.status(200).json({
       success: true,
@@ -63,6 +90,7 @@ const updateProfile = async (req, res, next) => {
         name: user.name,
         email: user.email,
         phone: user.phone,
+        avatar: user.avatar,
         stats: user.stats,
       },
     });
@@ -85,10 +113,10 @@ const changePassword = async (req, res, next) => {
       });
     }
 
-    if (newPassword.length < 6) {
+    if (newPassword.length < 8) {
       return res.status(400).json({
         success: false,
-        message: 'New password must be at least 6 characters.',
+        message: 'New password must be at least 8 characters.',
       });
     }
 

@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   ActivityIndicator,
   ScrollView,
@@ -15,11 +16,25 @@ import { colors } from '../../theme/colors';
 
 const HomeScreen = ({ navigation }) => {
   const { user } = useAuth();
-  const { products, categories, isLoading, error, refreshCustomerState } = useCustomer();
+  const {
+    products,
+    categories,
+    isLoading,
+    error,
+    notificationUnreadCount,
+    refreshNotificationCount,
+    refreshCustomerState,
+  } = useCustomer();
 
   useEffect(() => {
     if (products.length === 0) refreshCustomerState();
   }, [products.length, refreshCustomerState]);
+
+  useFocusEffect(useCallback(() => {
+    refreshNotificationCount().catch((requestError) => {
+      console.warn('[HomeScreen] Unable to refresh notification count:', requestError.message);
+    });
+  }, [refreshNotificationCount]));
 
   return (
     <View style={styles.container}>
@@ -30,14 +45,31 @@ const HomeScreen = ({ navigation }) => {
             <Text style={styles.greeting}>Hello, {user?.name?.split(' ')[0] || 'there'}!</Text>
             <Text style={styles.subtitle}>What would you like today?</Text>
           </View>
-          <TouchableOpacity
-            accessibilityRole="button"
-            accessibilityLabel="Open favourites"
-            style={styles.headerAction}
-            onPress={() => navigation.navigate('Favourites')}
-          >
-            <Ionicons name="heart-outline" size={22} color={colors.primary} />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Open notifications"
+              style={styles.headerAction}
+              onPress={() => navigation.navigate('Notifications')}
+            >
+              <Ionicons name="notifications-outline" size={22} color={colors.primary} />
+              {notificationUnreadCount > 0 ? (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.notificationBadgeText}>
+                    {notificationUnreadCount > 99 ? '99+' : notificationUnreadCount}
+                  </Text>
+                </View>
+              ) : null}
+            </TouchableOpacity>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Open favourites"
+              style={styles.headerAction}
+              onPress={() => navigation.navigate('Favourites')}
+            >
+              <Ionicons name="heart-outline" size={22} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <TouchableOpacity
@@ -128,10 +160,13 @@ const styles = StyleSheet.create({
   container: { backgroundColor: colors.background, flex: 1 },
   content: { padding: 18, paddingBottom: 24 },
   topRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingTop: 38 },
+  headerActions: { alignItems: 'center', flexDirection: 'row', gap: 9 },
   eyebrow: { color: colors.primary, fontSize: 10, fontWeight: '800', letterSpacing: 1.2 },
   greeting: { color: colors.text, fontSize: 24, fontWeight: '800', marginTop: 6 },
   subtitle: { color: colors.textSecondary, fontSize: 14, marginTop: 3 },
   headerAction: { alignItems: 'center', backgroundColor: colors.card, borderRadius: 21, height: 42, justifyContent: 'center', width: 42 },
+  notificationBadge: { alignItems: 'center', backgroundColor: colors.danger, borderColor: colors.background, borderRadius: 9, borderWidth: 1, height: 18, justifyContent: 'center', minWidth: 18, paddingHorizontal: 3, position: 'absolute', right: -3, top: -3 },
+  notificationBadgeText: { color: colors.textInverse, fontSize: 9, fontWeight: '800' },
   searchBar: { alignItems: 'center', backgroundColor: colors.card, borderColor: colors.border, borderRadius: 13, borderWidth: 1, flexDirection: 'row', gap: 10, height: 48, marginTop: 20, paddingHorizontal: 14 },
   searchHint: { color: colors.textSecondary, flex: 1, fontSize: 14 },
   hero: { alignItems: 'center', backgroundColor: colors.primaryDark, borderRadius: 18, flexDirection: 'row', justifyContent: 'space-between', marginTop: 20, minHeight: 164, overflow: 'hidden', padding: 20 },

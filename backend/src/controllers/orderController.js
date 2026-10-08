@@ -7,6 +7,8 @@ const Slot = require('../models/Slot');
 const Address = require('../models/Address');
 const Payment = require('../models/Payment');
 const Cart = require('../models/Cart');
+const Notification = require('../models/Notification');
+const { notifyOrderStatusChange } = require('../services/orderNotifications');
 const {
   DELIVERY_CHARGE,
   FREE_DELIVERY_THRESHOLD,
@@ -17,10 +19,10 @@ const {
 const getDeliveryCharge = (subtotal) =>
   subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_CHARGE;
 
-// Helper to generate unique order number like #FM-98432
+// Helper to generate order numbers like #CD-98432
 const generateOrderNumber = () => {
   const randomFiveDigits = Math.floor(10000 + Math.random() * 90000);
-  return `#FM-${randomFiveDigits}`;
+  return `#CD-${randomFiveDigits}`;
 };
 
 // @desc    Get active draft order for checkout, or create one if none exists
@@ -137,13 +139,30 @@ const updateOrderSlot = async (req, res, next) => {
         message: 'Please provide a valid slotId.',
       });
     }
+    if (!['draft', 'placed'].includes(order.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Only draft or placed orders can change their time slot.',
+      });
+    }
+    if (order.status === 'placed' && fulfillmentType && fulfillmentType !== order.fulfillmentType) {
+      return res.status(400).json({
+        success: false,
+        message: 'A placed order can only change its time slot.',
+      });
+    }
     if (fulfillmentType && !['pickup', 'delivery'].includes(fulfillmentType)) {
       return res.status(400).json({
         success: false,
         message: 'Fulfillment type must be pickup or delivery.',
       });
     }
-    if (promoCode !== undefined && promoCode && !PROMO_CODES[promoCode.trim().toUpperCase()]) {
+    if (
+      order.status === 'draft' &&
+      promoCode !== undefined &&
+      promoCode &&
+      !PROMO_CODES[promoCode.trim().toUpperCase()]
+    ) {
       return res.status(400).json({
         success: false,
         message: 'Invalid promo code.',
@@ -159,8 +178,14 @@ const updateOrderSlot = async (req, res, next) => {
     }
 
     const nextFulfillmentType = fulfillmentType || order.fulfillmentType;
+    if (newSlot.type !== nextFulfillmentType) {
+      return res.status(400).json({
+        success: false,
+        message: 'The selected slot does not match the order fulfillment type.',
+      });
+    }
     let selectedAddressId = order.deliveryAddress;
-    if (nextFulfillmentType === 'delivery') {
+    if (nextFulfillmentType === 'delivery' && order.status === 'draft') {
       const cart = await Cart.findOne({ user: req.user._id }).populate('selectedAddress');
       const selectedAddress = cart?.selectedAddress ||
         await Address.findOne({ user: req.user._id, isDefault: true });
@@ -172,9 +197,19 @@ const updateOrderSlot = async (req, res, next) => {
       }
       selectedAddressId = selectedAddress._id;
     }
+    if (nextFulfillmentType === 'delivery' && !selectedAddressId) {
+      return res.status(400).json({
+        success: false,
+        message: 'The delivery address for this order is missing.',
+      });
+    }
 
     // Check if new slot is full
-    if (newSlot.isFull || newSlot.bookedCount >= newSlot.maxCapacity) {
+    const changingSlot = !order.slot || order.slot.toString() !== slotId;
+    if (
+      changingSlot &&
+      (newSlot.isFull || newSlot.bookedCount >= newSlot.maxCapacity)
+    ) {
       return res.status(400).json({
         success: false,
         message: 'This time slot is full. Please choose another slot.',
@@ -199,16 +234,18 @@ const updateOrderSlot = async (req, res, next) => {
     }
 
     order.slot = newSlot._id;
-    order.deliveryAddress = nextFulfillmentType === 'delivery' ? selectedAddressId : null;
-    order.fulfillmentType = nextFulfillmentType;
-    if (promoCode !== undefined) {
-      order.promoCode = promoCode.trim().toUpperCase();
+    if (order.status === 'draft') {
+      order.deliveryAddress = nextFulfillmentType === 'delivery' ? selectedAddressId : null;
+      order.fulfillmentType = nextFulfillmentType;
+      if (promoCode !== undefined) {
+        order.promoCode = promoCode.trim().toUpperCase();
+      }
+      order.discountAmount = calculatePromoDiscount(order.promoCode, order.subtotal);
+      order.deliveryFee = nextFulfillmentType === 'delivery'
+        ? getDeliveryCharge(order.subtotal)
+        : 0;
+      order.totalAmount = order.subtotal - order.discountAmount + order.deliveryFee;
     }
-    order.discountAmount = calculatePromoDiscount(order.promoCode, order.subtotal);
-    order.deliveryFee = nextFulfillmentType === 'delivery'
-      ? getDeliveryCharge(order.subtotal)
-      : 0;
-    order.totalAmount = order.subtotal - order.discountAmount + order.deliveryFee;
     await order.save();
 
     const updatedOrder = await Order.findById(order._id)
@@ -253,11 +290,17 @@ const getOrderById = async (req, res, next) => {
   }
 };
 
-// @desc    Update order status (for viva tracking simulation)
+// @desc    Update order status (delivery partner or shop owner)
 // @route   PATCH /api/orders/:id/status
 // @access  Private
 const updateOrderStatus = async (req, res, next) => {
   try {
+    if (!['delivery', 'owner'].includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only delivery partners or owners can update order statuses.',
+      });
+    }
     const { status } = req.body;
     const allowedStatuses = ['placed', 'packed', 'out_for_delivery', 'delivered', 'cancelled'];
 
@@ -268,10 +311,7 @@ const updateOrderStatus = async (req, res, next) => {
       });
     }
 
-    const order = await Order.findOne({
-      _id: req.params.id,
-      user: req.user._id,
-    });
+    const order = await Order.findById(req.params.id);
 
     if (!order) {
       return res.status(404).json({
@@ -280,8 +320,17 @@ const updateOrderStatus = async (req, res, next) => {
       });
     }
 
+    if (status === 'cancelled' && order.status !== 'placed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Only placed orders can be cancelled.',
+      });
+    }
+
+    const previousStatus = order.status;
     order.status = status;
     await order.save();
+    await notifyOrderStatusChange(order, previousStatus);
 
     const updatedOrder = await Order.findById(order._id)
       .populate('slot')
@@ -297,8 +346,8 @@ const updateOrderStatus = async (req, res, next) => {
   }
 };
 
-// @desc    Cancel order (releases slot)
-// @route   DELETE /api/orders/:id
+// @desc    Cancel a placed order (releases slot)
+// @route   PATCH /api/orders/:id/cancel
 // @access  Private
 const cancelOrder = async (req, res, next) => {
   try {
@@ -314,17 +363,10 @@ const cancelOrder = async (req, res, next) => {
       });
     }
 
-    if (order.status === 'cancelled') {
+    if (order.status !== 'placed') {
       return res.status(400).json({
         success: false,
-        message: 'Order is already cancelled.',
-      });
-    }
-
-    if (order.status === 'delivered') {
-      return res.status(400).json({
-        success: false,
-        message: 'Delivered orders cannot be cancelled.',
+        message: 'Only placed orders can be cancelled.',
       });
     }
 
@@ -338,8 +380,10 @@ const cancelOrder = async (req, res, next) => {
       }
     }
 
+    const previousStatus = order.status;
     order.status = 'cancelled';
     await order.save();
+    await notifyOrderStatusChange(order, previousStatus);
 
     res.status(200).json({
       success: true,
@@ -351,11 +395,42 @@ const cancelOrder = async (req, res, next) => {
   }
 };
 
+// @desc    Permanently delete a cancelled order belonging to the customer
+// @route   DELETE /api/orders/:id
+// @access  Private
+const deleteOrder = async (req, res, next) => {
+  try {
+    const order = await Order.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+      status: 'cancelled',
+    });
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Cancelled order not found.',
+      });
+    }
+
+    await Promise.all([
+      Order.deleteOne({ _id: order._id, user: req.user._id, status: 'cancelled' }),
+      Notification.deleteMany({ user: req.user._id, orderId: order._id }),
+    ]);
+
+    res.status(200).json({ success: true, message: 'Cancelled order permanently deleted.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Get active/pending delivery orders for delivery partner (Screen 21)
 // @route   GET /api/orders/delivery/list
 // @access  Private
 const getDeliveryOrders = async (req, res, next) => {
   try {
+    if (!['delivery', 'owner'].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Delivery access is required.' });
+    }
     const orders = await Order.find({
       fulfillmentType: 'delivery',
       status: { $in: ['placed', 'packed', 'out_for_delivery'] },
@@ -389,6 +464,9 @@ const getDeliveryOrders = async (req, res, next) => {
 // @access  Private
 const getDeliveryOrderById = async (req, res, next) => {
   try {
+    if (!['delivery', 'owner'].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Delivery access is required.' });
+    }
     const order = await Order.findOne({
       _id: req.params.id,
       fulfillmentType: 'delivery',
@@ -422,6 +500,9 @@ const getDeliveryOrderById = async (req, res, next) => {
 // @access  Private
 const startDelivery = async (req, res, next) => {
   try {
+    if (!['delivery', 'owner'].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Delivery access is required.' });
+    }
     const order = await Order.findOne({
       _id: req.params.id,
       fulfillmentType: 'delivery',
@@ -440,8 +521,10 @@ const startDelivery = async (req, res, next) => {
       });
     }
 
+    const previousStatus = order.status;
     order.status = 'out_for_delivery';
     await order.save();
+    await notifyOrderStatusChange(order, previousStatus);
 
     res.status(200).json({
       success: true,
@@ -458,6 +541,9 @@ const startDelivery = async (req, res, next) => {
 // @access  Private
 const completeDelivery = async (req, res, next) => {
   try {
+    if (!['delivery', 'owner'].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Delivery access is required.' });
+    }
     const order = await Order.findOne({
       _id: req.params.id,
       fulfillmentType: 'delivery',
@@ -476,8 +562,10 @@ const completeDelivery = async (req, res, next) => {
       });
     }
 
+    const previousStatus = order.status;
     order.status = 'delivered';
     await order.save();
+    await notifyOrderStatusChange(order, previousStatus);
     const payment = await Payment.findOne({ order: order._id });
     if (payment?.method === 'cash_on_delivery' && payment.status === 'pending') {
       payment.status = 'successful';
@@ -504,6 +592,7 @@ module.exports = {
   getOrderById,
   updateOrderStatus,
   cancelOrder,
+  deleteOrder,
   getDeliveryOrders,
   getDeliveryOrderById,
   startDelivery,

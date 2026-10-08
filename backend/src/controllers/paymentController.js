@@ -12,6 +12,7 @@ const Payment = require('../models/Payment');
 const Order = require('../models/Order');
 const User = require('../models/User');
 const Cart = require('../models/Cart');
+const { notifyOrderStatusChange } = require('../services/orderNotifications');
 const {
   DELIVERY_CHARGE,
   FREE_DELIVERY_THRESHOLD,
@@ -172,8 +173,10 @@ const createPayment = async (req, res, next) => {
     });
 
     // Update order status to placed
+    const previousStatus = order.status;
     order.status = 'placed';
     await order.save();
+    await notifyOrderStatusChange(order, previousStatus);
     await Cart.findOneAndUpdate(
       { user: req.user._id },
       { $set: { items: [] } }

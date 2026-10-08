@@ -17,6 +17,7 @@ const profileRoutes = require('./routes/profileRoutes');
 const productRoutes = require('./routes/productRoutes');
 const cartRoutes = require('./routes/cartRoutes');
 const favouriteRoutes = require('./routes/favouriteRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 // Initialize MongoDB Connection
 connectDB();
@@ -46,6 +47,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/favourites', favouriteRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Catch-all 404 for undefined routes
 app.use('*', (req, res) => {
