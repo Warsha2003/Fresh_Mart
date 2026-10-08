@@ -26,6 +26,9 @@ const DeliveryDashboardScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  const notificationCount = deliveries.length;
 
   const handleBack = () => {
     if (navigation.canGoBack()) {
@@ -103,14 +106,93 @@ const DeliveryDashboardScreen = ({ navigation }) => {
           </View>
         </View>
 
-        <TouchableOpacity
-          style={styles.switchModeBtn}
-          onPress={() => navigation.navigate('MainTabs')}
-        >
-          <Ionicons name="cart-outline" size={16} color={colors.primaryDark} />
-          <Text style={styles.switchModeText}>Customer View</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            accessibilityLabel="Open delivery notifications"
+            accessibilityRole="button"
+            style={styles.notificationButton}
+            onPress={() => setShowNotifications((visible) => !visible)}
+          >
+            <Ionicons name="notifications-outline" size={18} color="#FFFFFF" />
+            {notificationCount > 0 ? (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>
+                  {notificationCount > 99 ? '99+' : notificationCount}
+                </Text>
+              </View>
+            ) : null}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.switchModeBtn}
+            onPress={() => navigation.navigate('MainTabs')}
+          >
+            <Ionicons name="cart-outline" size={16} color={colors.primaryDark} />
+            <Text style={styles.switchModeText}>Customer View</Text>
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {showNotifications ? (
+        <View style={styles.notificationsPanel}>
+          <View style={styles.notificationsHeader}>
+            <View>
+              <Text style={styles.notificationsTitle}>Delivery notifications</Text>
+              <Text style={styles.notificationsSubtitle}>
+                {notificationCount} new order{notificationCount === 1 ? '' : 's'}
+              </Text>
+            </View>
+            <TouchableOpacity
+              accessibilityLabel="Close notifications"
+              onPress={() => setShowNotifications(false)}
+              style={styles.closeNotificationButton}
+            >
+              <Ionicons name="close-outline" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          {deliveries.length === 0 ? (
+            <View style={styles.notificationEmpty}>
+              <Ionicons name="notifications-off-outline" size={24} color={colors.textSecondary} />
+              <Text style={styles.notificationEmptyText}>No new delivery notifications.</Text>
+            </View>
+          ) : (
+            deliveries.map((order) => {
+              const isActive = order.status === 'out_for_delivery';
+              return (
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  key={order._id}
+                  onPress={() =>
+                    navigation.navigate(isActive ? 'DeliveryMap' : 'DeliveryAlert', {
+                      orderId: order._id,
+                    })
+                  }
+                  style={styles.notificationItem}
+                >
+                  <View style={styles.notificationIcon}>
+                    <Ionicons
+                      name={isActive ? 'bicycle-outline' : 'storefront-outline'}
+                      size={18}
+                      color={colors.primary}
+                    />
+                  </View>
+                  <View style={styles.notificationDetails}>
+                    <Text style={styles.notificationOrderNumber}>{order.orderNumber}</Text>
+                    <Text style={styles.notificationCustomer}>
+                      {order.user?.name || 'Customer'} needs delivery
+                    </Text>
+                    <Text style={styles.notificationStatus}>
+                      {getStatusLabel(order.status)}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward-outline" size={18} color={colors.textLight} />
+                </TouchableOpacity>
+              );
+            })
+          )}
+        </View>
+      ) : null}
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.summaryCard}>
@@ -283,6 +365,123 @@ const styles = StyleSheet.create({
   headerLeft: {
     alignItems: 'center',
     flexDirection: 'row',
+  },
+  headerActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  notificationButton: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderRadius: 14,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  notificationBadge: {
+    alignItems: 'center',
+    backgroundColor: '#F97316',
+    borderColor: '#064E3B',
+    borderRadius: 10,
+    borderWidth: 2,
+    height: 18,
+    justifyContent: 'center',
+    minWidth: 18,
+    position: 'absolute',
+    right: -4,
+    top: -4,
+  },
+  notificationBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '800',
+    paddingHorizontal: 3,
+  },
+  notificationsPanel: {
+    backgroundColor: colors.card,
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    marginHorizontal: 14,
+    marginTop: 8,
+    padding: 14,
+    borderRadius: 18,
+    shadowColor: '#064E3B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  notificationsHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  notificationsTitle: {
+    color: '#16352A',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  notificationsSubtitle: {
+    color: colors.textSecondary,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  closeNotificationButton: {
+    alignItems: 'center',
+    height: 34,
+    justifyContent: 'center',
+    width: 34,
+  },
+  notificationItem: {
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    marginBottom: 8,
+    padding: 10,
+  },
+  notificationIcon: {
+    alignItems: 'center',
+    backgroundColor: '#DCFCE7',
+    borderRadius: 18,
+    height: 36,
+    justifyContent: 'center',
+    marginRight: 10,
+    width: 36,
+  },
+  notificationDetails: {
+    flex: 1,
+  },
+  notificationOrderNumber: {
+    color: '#16352A',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  notificationCustomer: {
+    color: '#475569',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  notificationStatus: {
+    color: colors.primary,
+    fontSize: 10,
+    fontWeight: '800',
+    marginTop: 3,
+  },
+  notificationEmpty: {
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 13,
+    padding: 18,
+  },
+  notificationEmptyText: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    marginTop: 6,
   },
   backButton: {
     alignItems: 'center',

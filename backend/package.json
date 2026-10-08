@@ -8,6 +8,7 @@
     "dev": "nodemon src/server.js",
     "seed": "node src/seed/seedSlots.js",
     "seed:products": "node src/seed/seedProducts.js",
+        "seed:owner": "node src/seed/seedOwner.js",
     "ip": "node scripts/get-ip.js",
     "tunnel": "npx localtunnel --port 5000"
   },

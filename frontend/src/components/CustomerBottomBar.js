@@ -11,13 +11,21 @@ const tabs = [
   { name: 'Profile', icon: 'person-outline' },
 ];
 
-export const CUSTOMER_BOTTOM_BAR_HEIGHT = 64;
+export const CUSTOMER_BOTTOM_BAR_HEIGHT = 62;
 
 const CustomerBottomBar = ({ navigation }) => {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.container, { height: CUSTOMER_BOTTOM_BAR_HEIGHT + insets.bottom, paddingBottom: insets.bottom }]}>
+    <View
+      style={[
+        styles.container,
+        {
+          height: CUSTOMER_BOTTOM_BAR_HEIGHT + insets.bottom,
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
+        },
+      ]}
+    >
       {tabs.map((tab) => (
         <TouchableOpacity
           key={tab.name}
@@ -26,7 +34,7 @@ const CustomerBottomBar = ({ navigation }) => {
           style={styles.tab}
           onPress={() => navigation.navigate('MainTabs', { screen: tab.name })}
         >
-          <Ionicons name={tab.icon} size={21} color={colors.textSecondary} />
+          <Ionicons name={tab.icon} size={22} color={colors.textSecondary} />
           <Text style={styles.label}>{tab.name}</Text>
         </TouchableOpacity>
       ))}
@@ -45,14 +53,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     backgroundColor: colors.card,
     borderTopWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 4,
+    borderTopColor: colors.border,
+    elevation: 8,
+    paddingTop: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
   tab: {
     flex: 1,
-    minHeight: 52,
+    minHeight: 56,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 4,
   },
   label: {
     color: colors.textSecondary,

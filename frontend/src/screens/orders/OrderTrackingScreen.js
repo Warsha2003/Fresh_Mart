@@ -22,7 +22,8 @@ import StatusStep from '../../components/StatusStep';
 import AppButton from '../../components/AppButton';
 import client from '../../api/client';
 import { useFocusEffect } from '@react-navigation/native';
-import CustomerBottomBar from '../../components/CustomerBottomBar';
+import CustomerBottomBar, { CUSTOMER_BOTTOM_BAR_HEIGHT } from '../../components/CustomerBottomBar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const statusSequence = ['placed', 'packed', 'out_for_delivery', 'delivered'];
 
@@ -31,6 +32,7 @@ const OrderTrackingScreen = ({ navigation, route }) => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
+  const insets = useSafeAreaInsets();
 
   // CRUD Operation 1: READ Order Details & Status
   const fetchOrderDetails = useCallback(async () => {
@@ -140,7 +142,12 @@ const OrderTrackingScreen = ({ navigation, route }) => {
           </Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: CUSTOMER_BOTTOM_BAR_HEIGHT + insets.bottom + 16 },
+          ]}
+        >
           {/* Green Status Banner */}
           <View
             style={[
@@ -194,7 +201,7 @@ const OrderTrackingScreen = ({ navigation, route }) => {
               />
               <StatusStep
                 title="Delivered"
-                subtitle="Collected by customer"
+                subtitle={order.fulfillmentType === 'delivery' ? 'Delivered to your address' : 'Collected by customer'}
                 status={getStepStatus('delivered')}
                 isLast={true}
               />
@@ -269,10 +276,10 @@ const OrderTrackingScreen = ({ navigation, route }) => {
                 icon={<Ionicons name="trash-outline" size={18} color={colors.danger} />}
               />
             ) : null}
-            <CustomerBottomBar navigation={navigation} />
           </View>
         </ScrollView>
       )}
+      {order && !loading ? <CustomerBottomBar navigation={navigation} /> : null}
     </View>
   );
 };
@@ -316,7 +323,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 100,
   },
   bannerCard: {
     flexDirection: 'row',

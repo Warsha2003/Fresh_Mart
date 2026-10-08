@@ -141,14 +141,16 @@ const createPayment = async (req, res, next) => {
     let last4 = null;
 
     if (method === 'card') {
-      if (!cardNumber || cardNumber.replace(/\s/g, '').length < 15) {
+      const cleanNum = typeof cardNumber === 'string'
+        ? cardNumber.replace(/\s/g, '')
+        : '';
+      if (!/^\d{16}$/.test(cleanNum)) {
         return res.status(400).json({
           success: false,
-          message: 'Please provide a valid credit or debit card number.',
+          message: 'Card number must be 16 digits',
         });
       }
 
-      const cleanNum = cardNumber.replace(/\s/g, '');
       last4 = cleanNum.slice(-4);
       cardBrand = detectCardBrand(cleanNum);
 
