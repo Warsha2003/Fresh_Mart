@@ -16,19 +16,21 @@ import {
   Alert,
   Linking,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import ScreenHeader from '../../components/ScreenHeader';
 import AppButton from '../../components/AppButton';
 import client from '../../api/client';
+import { getOrderItemAsset } from '../../config/productAssets';
 
 const DeliveryOrderDetailsScreen = ({ navigation, route }) => {
   const { orderId } = route.params || {};
-  const [starting, setStarting] = useState(false);
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [startingDelivery, setStartingDelivery] = useState(false);
 
   const loadOrder = useCallback(async () => {
     if (!orderId) {
@@ -60,6 +62,8 @@ const DeliveryOrderDetailsScreen = ({ navigation, route }) => {
       : order?.payment?.method === 'card'
         ? 'Paid Online'
         : 'Payment details unavailable';
+  const featuredItem = order?.items?.[0];
+  const featuredImage = getOrderItemAsset(featuredItem);
 
   const handleCallCustomer = () => {
     if (!customerPhone) {
@@ -82,18 +86,26 @@ const DeliveryOrderDetailsScreen = ({ navigation, route }) => {
     );
   };
 
-  const handleStartPackageDelivery = async () => {
+  const handleStartDelivery = async () => {
     if (!order?._id) return;
+
+    if (order.status === 'out_for_delivery') {
+      navigation.navigate('DeliveryMap', { orderId: order._id });
+      return;
+    }
+
     try {
-      setStarting(true);
-      if (order.status !== 'out_for_delivery') {
-        await client.patch(`/orders/${order._id}/start-delivery`);
-      }
+      setStartingDelivery(true);
+      await client.patch(`/orders/${order._id}/start-delivery`);
+      setOrder((currentOrder) => ({
+        ...currentOrder,
+        status: 'out_for_delivery',
+      }));
       navigation.navigate('DeliveryMap', { orderId: order._id });
     } catch (error) {
       Alert.alert('Could not start delivery', error.message);
     } finally {
-      setStarting(false);
+      setStartingDelivery(false);
     }
   };
 
@@ -122,11 +134,35 @@ const DeliveryOrderDetailsScreen = ({ navigation, route }) => {
       ) : order ? (
       <>
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.photoHero}>
+          <View style={styles.featuredImageContainer}>
+            <Image source={featuredImage} style={styles.featuredImage} resizeMode="cover" />
+            <View style={styles.photoCountBadge}>
+              <Text style={styles.photoCountText}>
+                {order.items?.length || 0} item{order.items?.length === 1 ? '' : 's'}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.heroInfo}>
+            <Text style={styles.heroLabel}>ORDER DETAILS</Text>
+            <Text style={styles.heroOrderNumber}>
+              {order.orderNumber || 'Order'}
+            </Text>
+            <Text style={styles.heroStatus}>
+              {order.status === 'out_for_delivery' ? 'ACTIVE' : 'READY'}
+            </Text>
+            <View style={styles.heroBottomRow}>
+              <Text style={styles.heroTotalLabel}>Order total</Text>
+              <Text style={styles.heroTotal}>Rs. {order.totalAmount}</Text>
+            </View>
+          </View>
+        </View>
+
         {/* Customer Card with Call Button */}
         <View style={styles.card}>
           <Text style={styles.cardSectionLabel}>CUSTOMER</Text>
           <View style={styles.customerRow}>
-            <View style={{ flex: 1 }}>
+            <View style={styles.customerInfo}>
               <Text style={styles.customerName}>{order.user?.name || 'Customer'}</Text>
               <Text style={styles.customerPhone}>{customerPhone || 'Phone unavailable'}</Text>
             </View>
@@ -134,6 +170,7 @@ const DeliveryOrderDetailsScreen = ({ navigation, route }) => {
               style={styles.callCircleBtn}
               onPress={handleCallCustomer}
               activeOpacity={0.8}
+              accessibilityLabel="Call customer"
             >
               <Ionicons name="call" size={20} color={colors.textInverse} />
             </TouchableOpacity>
@@ -161,27 +198,25 @@ const DeliveryOrderDetailsScreen = ({ navigation, route }) => {
         {/* Items Checklist Card */}
         <View style={styles.card}>
           <Text style={styles.cardSectionLabel}>
-            ITEMS CHECKLIST ({order.items?.length || 0} ITEMS)
+            ORDER PHOTOS ({order.items?.length || 0} ITEMS)
           </Text>
 
-          {(order.items || []).map((item, index) => (
-            <View style={styles.itemRow} key={`${item._id || item.name}-${index}`}>
-              <View style={[styles.itemIcon, { backgroundColor: index % 2 ? '#FEE2E2' : '#FEF3C7' }]}>
-                <Ionicons
-                  name={index % 2 ? 'basket-outline' : 'nutrition'}
-                  size={18}
-                  color={index % 2 ? '#DC2626' : '#D97706'}
-                />
+          <View style={styles.photoGrid}>
+            {(order.items || []).map((item, index) => (
+              <View style={styles.photoItemCard} key={`${item._id || item.name}-${index}`}>
+                <View style={styles.itemImageContainer}>
+                  <Image source={getOrderItemAsset(item)} style={styles.itemImage} resizeMode="cover" />
+                  <View style={styles.quantityBadge}>
+                    <Text style={styles.quantityText}>×{item.quantity}</Text>
+                  </View>
+                </View>
+                <View style={styles.itemDetails}>
+                  <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
+                  <Text style={styles.itemPrice}>Rs. {item.price * item.quantity}</Text>
+                </View>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.itemName}>{item.name}</Text>
-                <Text style={styles.itemMeta}>
-                  {item.unit || 'Unit'} · Qty: {item.quantity}
-                </Text>
-              </View>
-              <Text style={styles.itemPrice}>Rs. {item.price * item.quantity}</Text>
-            </View>
-          ))}
+            ))}
+          </View>
 
           <View style={styles.divider} />
 
@@ -204,14 +239,13 @@ const DeliveryOrderDetailsScreen = ({ navigation, route }) => {
         </View>
       </ScrollView>
 
-      {/* Bottom Sticky Action Button */}
-      <View style={styles.bottomBar}>
+      <View style={styles.footer}>
         <AppButton
-          title="Start Package Delivery"
-          onPress={handleStartPackageDelivery}
-          loading={starting}
-          disabled={order.status === 'delivered'}
-          icon={<Ionicons name="navigate" size={18} color={colors.textInverse} />}
+          title={order.status === 'out_for_delivery' ? 'Continue Delivery' : 'Start Delivery'}
+          onPress={handleStartDelivery}
+          loading={startingDelivery}
+          icon={<Ionicons name="bicycle" size={20} color={colors.textInverse} />}
+          style={styles.footerButton}
         />
       </View>
       </>
@@ -228,164 +262,283 @@ const DeliveryOrderDetailsScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#F2F8F4',
     paddingTop: 44,
   },
   scrollContent: {
     padding: 16,
     paddingBottom: 110,
   },
+  footer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.96)',
+    borderTopColor: '#D6E9DF',
+    borderTopWidth: 1,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 14,
+    shadowColor: '#064E3B',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+  },
+  footerButton: {
+    marginVertical: 0,
+  },
+  photoHero: {
+    alignItems: 'center',
+    backgroundColor: '#064E3B',
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
+    flexDirection: 'row',
+    marginBottom: 16,
+    padding: 18,
+    shadowColor: '#064E3B',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+  },
+  featuredImageContainer: {
+    backgroundColor: '#D1FAE5',
+    borderRadius: 18,
+    height: 132,
+    overflow: 'hidden',
+    position: 'relative',
+    width: 132,
+  },
+  featuredImage: {
+    height: '100%',
+    width: '100%',
+  },
+  photoCountBadge: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    backgroundColor: 'rgba(7, 62, 31, 0.82)',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  photoCountText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  heroInfo: {
+    flex: 1,
+    marginLeft: 14,
+  },
+  heroLabel: {
+    color: '#A7F3D0',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.4,
+  },
+  heroOrderNumber: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '800',
+    marginTop: 3,
+  },
+  heroStatus: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#D1FAE5',
+    borderRadius: 12,
+    color: '#064E3B',
+    fontSize: 9,
+    fontWeight: '800',
+    marginTop: 7,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+  heroBottomRow: {
+    alignItems: 'center',
+    borderTopColor: 'rgba(255,255,255,0.16)',
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingTop: 10,
+  },
+  heroTotalLabel: {
+    color: '#C9F2DE',
+    fontSize: 12,
+  },
+  heroTotal: {
+    color: '#FFFFFF',
+    fontSize: 19,
+    fontWeight: '800',
+  },
   card: {
     backgroundColor: colors.card,
+    borderColor: '#C7EAD8',
     borderRadius: 18,
-    padding: 18,
-    marginBottom: 14,
     borderWidth: 1,
-    borderColor: colors.border,
+    marginBottom: 14,
+    padding: 18,
+    shadowColor: '#064E3B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
   },
   cardSectionLabel: {
+    color: '#047857',
     fontSize: 11,
     fontWeight: '800',
-    color: colors.textSecondary,
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
     marginBottom: 10,
   },
   customerRow: {
-    flexDirection: 'row',
     alignItems: 'center',
+    flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  customerInfo: {
+    flex: 1,
   },
   customerName: {
+    color: '#17241F',
     fontSize: 17,
     fontWeight: '800',
-    color: colors.text,
   },
   customerPhone: {
+    color: '#64748B',
     fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: 2,
+    marginTop: 3,
   },
   callCircleBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: colors.primary,
+    backgroundColor: '#10B981',
+    borderRadius: 22,
+    height: 46,
+    justifyContent: 'center',
+    shadowColor: '#10B981',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 3,
+    shadowRadius: 6,
+    width: 46,
   },
   addressRow: {
-    flexDirection: 'row',
     alignItems: 'center',
+    flexDirection: 'row',
   },
   addressTitle: {
+    color: '#1E293B',
     fontSize: 15,
     fontWeight: '700',
-    color: colors.text,
   },
   addressDetails: {
+    color: '#64748B',
     fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: 2,
+    marginTop: 3,
   },
   miniMapGraphic: {
-    width: 60,
-    height: 50,
-    borderRadius: 12,
-    backgroundColor: colors.primaryLight,
-    justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#DCFCE7',
+    borderColor: '#A7F3D0',
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.border,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  itemIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    height: 56,
     justifyContent: 'center',
+    width: 64,
+  },
+  photoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  photoItemCard: {
+    backgroundColor: '#F6FBF8',
+    borderColor: '#DCEDE5',
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 10,
+    overflow: 'hidden',
+    width: '48%',
+  },
+  itemImageContainer: {
     alignItems: 'center',
-    marginRight: 10,
+    backgroundColor: '#E8F7EF',
+    height: 124,
+    justifyContent: 'center',
+    overflow: 'hidden',
+    width: '100%',
+  },
+  itemImage: {
+    height: '100%',
+    width: '100%',
+  },
+  quantityBadge: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: 'rgba(7, 62, 31, 0.86)',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  quantityText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  itemDetails: {
+    padding: 10,
   },
   itemName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  itemMeta: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 1,
+    color: '#1E293B',
+    fontSize: 13,
+    fontWeight: '700',
   },
   itemPrice: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.text,
+    color: '#064E3B',
+    fontSize: 13,
+    fontWeight: '800',
+    marginTop: 4,
   },
   divider: {
+    backgroundColor: '#DDEBE4',
     height: 1,
-    backgroundColor: colors.borderLight,
-    marginVertical: 10,
+    marginVertical: 11,
   },
   totalRow: {
+    alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
     paddingTop: 4,
   },
   totalLabel: {
+    color: '#334155',
     fontSize: 15,
     fontWeight: '700',
-    color: colors.text,
   },
   totalPrice: {
-    fontSize: 17,
+    color: '#047857',
+    fontSize: 19,
     fontWeight: '800',
-    color: colors.primary,
   },
   paymentRow: {
+    alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
   },
   paymentLeft: {
-    flexDirection: 'row',
     alignItems: 'center',
+    flexDirection: 'row',
   },
   paymentMethod: {
+    color: '#334155',
     fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
+    fontWeight: '700',
   },
   paymentAmount: {
+    color: '#064E3B',
     fontSize: 15,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: colors.card,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 28,
-    borderTopWidth: 1,
-    borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 8,
+    fontWeight: '800',
   },
   stateIndicator: {
     marginTop: 80,

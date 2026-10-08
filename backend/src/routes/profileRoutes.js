@@ -8,6 +8,7 @@ const {
   getProfile,
   updateProfile,
   changePassword,
+  deleteAccount,
   getAddresses,
   createAddress,
   updateAddress,
@@ -19,6 +20,7 @@ router.use(protect); // All profile routes require JWT authentication
 
 router.get('/', getProfile);
 router.put('/', updateProfile);
+router.delete('/', deleteAccount);
 router.put('/password', changePassword);
 router.get('/addresses', getAddresses);
 router.post('/addresses', createAddress);
