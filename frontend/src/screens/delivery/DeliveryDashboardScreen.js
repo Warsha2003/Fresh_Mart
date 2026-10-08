@@ -18,12 +18,22 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import AppButton from '../../components/AppButton';
 import client from '../../api/client';
+import { useAuth } from '../../context/AuthContext';
 
 const DeliveryDashboardScreen = ({ navigation }) => {
+  const { logout } = useAuth();
   const [deliveries, setDeliveries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleBackToLogin = async () => {
+    await logout();
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'DeliveryLogin' }],
+    });
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -76,12 +86,21 @@ const DeliveryDashboardScreen = ({ navigation }) => {
     <View style={styles.container}>
       {/* Top Header */}
       <View style={styles.header}>
-        <View>
-          <View style={styles.onlineBadge}>
-            <View style={styles.onlineDot} />
-            <Text style={styles.onlineText}>You're online</Text>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBackToLogin}
+            accessibilityLabel="Back to delivery login"
+          >
+            <Ionicons name="arrow-back" size={19} color={colors.textInverse} />
+          </TouchableOpacity>
+          <View>
+            <View style={styles.onlineBadge}>
+              <View style={styles.onlineDot} />
+              <Text style={styles.onlineText}>You're online</Text>
+            </View>
+            <Text style={styles.headerTitle}>Delivery Dashboard</Text>
           </View>
-          <Text style={styles.headerTitle}>Delivery Dashboard</Text>
         </View>
 
         <TouchableOpacity
@@ -94,11 +113,50 @@ const DeliveryDashboardScreen = ({ navigation }) => {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryTopRow}>
+            <View>
+              <Text style={styles.summaryEyebrow}>TODAY'S ACTIVITY</Text>
+              <Text style={styles.summaryTitle}>Ready for the next delivery</Text>
+              <Text style={styles.summarySubtitle}>
+                Keep your route moving and deliver fresh food on time.
+              </Text>
+            </View>
+            <View style={styles.summaryIcon}>
+              <Ionicons name="bicycle-outline" size={26} color="#FFFFFF" />
+            </View>
+          </View>
+
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{deliveries.length}</Text>
+              <Text style={styles.statLabel}>Assignments</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>
+                {deliveries.filter((order) => order.status === 'out_for_delivery').length}
+              </Text>
+              <Text style={styles.statLabel}>In progress</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>
+                {deliveries.filter((order) => order.status !== 'out_for_delivery').length}
+              </Text>
+              <Text style={styles.statLabel}>New</Text>
+            </View>
+          </View>
+        </View>
+
         {/* Section Heading */}
         <View style={styles.sectionRow}>
-          <Text style={styles.sectionTitle}>
-            Deliveries ({deliveries.length})
-          </Text>
+          <View>
+            <Text style={styles.sectionTitle}>Your deliveries</Text>
+            <Text style={styles.sectionSubtitle}>
+              {deliveries.length} available assignment{deliveries.length === 1 ? '' : 's'}
+            </Text>
+          </View>
           <TouchableOpacity
             style={styles.viewMapLink}
             onPress={() => {
@@ -204,15 +262,36 @@ const DeliveryDashboardScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#F2F8F4',
     paddingTop: 48,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    backgroundColor: '#064E3B',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
     paddingHorizontal: 20,
-    paddingBottom: 14,
+    paddingBottom: 18,
+    paddingTop: 4,
+    shadowColor: '#064E3B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+  },
+  headerLeft: {
+    alignItems: 'center',
+    flexDirection: 'row',
+  },
+  backButton: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 14,
+    height: 40,
+    justifyContent: 'center',
+    marginRight: 11,
+    width: 40,
   },
   onlineBadge: {
     flexDirection: 'row',
@@ -220,39 +299,112 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   onlineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#10B981',
-    marginRight: 6,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: '#34D399',
+    borderWidth: 2,
+    borderColor: '#D1FAE5',
+    marginRight: 7,
   },
   onlineText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#059669',
+    fontWeight: '700',
+    color: '#D1FAE5',
   },
   headerTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: colors.text,
+    color: '#FFFFFF',
   },
   switchModeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primaryLight,
+    backgroundColor: '#D1FAE5',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: 14,
   },
   switchModeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.primaryDark,
-    marginLeft: 4,
+    color: '#064E3B',
+    marginLeft: 5,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 30,
+    padding: 18,
+    paddingBottom: 34,
+  },
+  summaryCard: {
+    backgroundColor: '#064E3B',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    marginBottom: 18,
+    padding: 20,
+    shadowColor: '#064E3B',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+  },
+  summaryTopRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+  },
+  summaryEyebrow: {
+    color: '#A7F3D0',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+  },
+  summaryTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '800',
+    marginTop: 5,
+  },
+  summarySubtitle: {
+    color: '#C9F2DE',
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 5,
+  },
+  summaryIcon: {
+    alignItems: 'center',
+    backgroundColor: '#10B981',
+    borderRadius: 18,
+    height: 54,
+    justifyContent: 'center',
+    marginLeft: 14,
+    width: 54,
+  },
+  statsRow: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.09)',
+    borderRadius: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 18,
+    paddingVertical: 13,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statValue: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  statLabel: {
+    color: '#C9F2DE',
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  statDivider: {
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    height: 30,
+    width: 1,
   },
   sectionRow: {
     flexDirection: 'row',
@@ -261,32 +413,40 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.text,
+    color: '#064E3B',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  sectionSubtitle: {
+    color: '#64748B',
+    fontSize: 11,
+    marginTop: 2,
   },
   viewMapLink: {
     flexDirection: 'row',
     alignItems: 'center',
+    padding: 7,
   },
   viewMapText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: colors.primary,
-    marginLeft: 4,
+    fontWeight: '700',
+    color: '#047857',
+    marginLeft: 5,
   },
   deliveryCard: {
     backgroundColor: colors.card,
-    borderRadius: 18,
+    borderRadius: 20,
     padding: 18,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 3,
+    borderColor: '#C7EAD8',
+    borderTopWidth: 5,
+    borderTopColor: '#10B981',
+    shadowColor: '#064E3B',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.1,
+    shadowRadius: 13,
+    elevation: 5,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -295,41 +455,43 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   orderNumberText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '800',
-    color: colors.text,
+    color: '#16352A',
   },
   statusTag: {
     fontSize: 10,
-    fontWeight: '700',
-    color: colors.primaryDark,
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
+    fontWeight: '800',
+    color: '#065F46',
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
     alignSelf: 'flex-start',
-    marginTop: 4,
+    marginTop: 5,
   },
   distanceBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E0F2FE',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
   },
   distanceText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#0284C7',
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#047857',
     marginLeft: 4,
   },
   routeBox: {
-    backgroundColor: '#FAFBFB',
-    borderRadius: 14,
-    padding: 12,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 16,
+    padding: 14,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: '#BBF7D0',
     marginBottom: 14,
   },
   routeStop: {
@@ -337,64 +499,65 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   stopIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 31,
+    height: 31,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
   },
   stopLabel: {
     fontSize: 11,
-    color: colors.textSecondary,
-    fontWeight: '500',
+    color: '#64748B',
+    fontWeight: '700',
   },
   stopName: {
     fontSize: 13,
-    fontWeight: '700',
-    color: colors.text,
+    fontWeight: '800',
+    color: '#1E293B',
   },
   stopSubtitle: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 1,
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
   },
   routeDivider: {
-    height: 12,
+    height: 28,
     width: 2,
-    backgroundColor: colors.border,
-    marginLeft: 13,
-    marginVertical: 2,
+    backgroundColor: '#86EFAC',
+    marginLeft: 14,
+    marginVertical: 3,
   },
   acceptBtn: {
     marginVertical: 0,
-    height: 46,
+    height: 48,
+    borderRadius: 14,
   },
   emptyState: {
     alignItems: 'center',
-    backgroundColor: colors.card,
-    borderRadius: 18,
-    padding: 28,
+    backgroundColor: '#E9F9F0',
+    borderRadius: 20,
+    padding: 32,
     marginTop: 20,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#B7EBCF',
   },
   emptyTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.text,
-    marginTop: 10,
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#064E3B',
+    marginTop: 12,
   },
   emptyMessage: {
-    color: colors.textSecondary,
+    color: '#4B6477',
     fontSize: 13,
     textAlign: 'center',
-    marginTop: 6,
+    marginTop: 7,
   },
   retryText: {
-    color: colors.primary,
-    fontWeight: '700',
-    marginTop: 12,
+    color: '#047857',
+    fontWeight: '800',
+    marginTop: 14,
   },
 });
 

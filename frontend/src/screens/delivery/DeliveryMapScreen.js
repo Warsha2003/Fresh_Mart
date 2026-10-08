@@ -122,36 +122,58 @@ const DeliveryMapScreen = ({ navigation, route }) => {
     <View style={styles.container}>
       {/* Stylized Interactive Vector Map Graphic */}
       <View style={styles.mapCanvas}>
-        {/* City Blocks Simulation */}
+        {/* Map Environment */}
         <View style={styles.gridContainer}>
-          <View style={[styles.block, { top: 60, left: 30, width: 90, height: 110 }]} />
-          <View style={[styles.block, { top: 60, left: 140, width: 100, height: 110 }]} />
-          <View style={[styles.block, { top: 60, left: 260, width: 80, height: 110 }]} />
+          <View style={[styles.block, { top: 55, left: 22, width: 92, height: 108, backgroundColor: '#D7E8DB' }]} />
+          <View style={[styles.block, { top: 55, left: 132, width: 108, height: 108, backgroundColor: '#E7F0E8' }]} />
+          <View style={[styles.block, { top: 55, left: 258, width: 72, height: 108, backgroundColor: '#D7E8DB' }]} />
+          <View style={[styles.block, { top: 190, left: 22, width: 92, height: 138, backgroundColor: '#E7F0E8' }]} />
+          <View style={[styles.block, { top: 190, left: 132, width: 108, height: 138, backgroundColor: '#D7E8DB' }]} />
+          <View style={[styles.block, { top: 190, left: 258, width: 72, height: 138, backgroundColor: '#E7F0E8' }]} />
 
-          <View style={[styles.block, { top: 190, left: 30, width: 90, height: 130 }]} />
-          <View style={[styles.block, { top: 190, left: 140, width: 100, height: 130 }]} />
-          <View style={[styles.block, { top: 190, left: 260, width: 80, height: 130 }]} />
-
-          {/* Street Name Labels */}
-          <Text style={[styles.streetLabel, { top: 175, left: 130 }]}>Lake Road</Text>
-          <Text style={[styles.streetLabel, { top: 90, left: 5, transform: [{ rotate: '-90deg' }] }]}>
-            Galle Rd
+          {/* Street Labels */}
+          <Text style={[styles.streetLabel, { top: 172, left: 118, transform: [{ rotate: '-5deg' }] }]}>
+            Lake Road
+          </Text>
+          <Text style={[styles.streetLabel, { top: 92, left: 1, transform: [{ rotate: '-90deg' }] }]}>
+            Galle Road
+          </Text>
+          <Text style={[styles.streetLabel, { top: 285, left: 145, transform: [{ rotate: '8deg' }] }]}>
+            Green Street
           </Text>
 
-          {/* Blue Route Polyline Simulation */}
+          {/* Green Delivery Route */}
           <View style={styles.routeVertical} />
           <View style={styles.routeHorizontal} />
+          <View style={styles.routeCurve} />
 
-          {/* Rider Current Position Pin */}
+          {/* Pickup Point */}
+          <View style={styles.pickupPin}>
+            <Ionicons name="storefront-outline" size={16} color="#FFFFFF" />
+          </View>
+          <Text style={styles.mapLabel}>Pickup</Text>
+
+          {/* Rider Position */}
           <View style={styles.riderPin}>
             <View style={styles.riderInner}>
-              <Ionicons name="navigate" size={16} color={colors.textInverse} />
+              <Ionicons name="navigate" size={18} color={colors.textInverse} />
             </View>
           </View>
+          <Text style={styles.riderLabel}>You are here</Text>
 
-          {/* Customer Destination Pin */}
+          {/* Customer Destination */}
           <View style={styles.destinationPin}>
-            <Ionicons name="home" size={16} color={colors.textInverse} />
+            <Ionicons name="home" size={18} color={colors.textInverse} />
+          </View>
+          <Text style={styles.destinationLabel}>Destination</Text>
+
+          {/* Live Route Card */}
+          <View style={styles.liveRouteCard}>
+            <View style={styles.liveDot} />
+            <View>
+              <Text style={styles.liveRouteTitle}>Live route</Text>
+              <Text style={styles.liveRouteDetail}>3.2 km · 8 min</Text>
+            </View>
           </View>
         </View>
 
@@ -273,12 +295,13 @@ const DeliveryMapScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#EAF4ED',
   },
   mapCanvas: {
     flex: 1,
     position: 'relative',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#DCEFE2',
+    overflow: 'hidden',
   },
   gridContainer: {
     ...StyleSheet.absoluteFillObject,
@@ -297,54 +320,152 @@ const styles = StyleSheet.create({
   },
   routeVertical: {
     position: 'absolute',
-    top: 130,
-    left: 175,
-    width: 6,
-    height: 140,
-    backgroundColor: '#2563EB',
-    borderRadius: 3,
+    top: 135,
+    left: 177,
+    width: 7,
+    height: 155,
+    backgroundColor: '#10B981',
+    borderRadius: 4,
+    opacity: 0.9,
   },
   routeHorizontal: {
     position: 'absolute',
-    top: 130,
-    left: 175,
-    width: 100,
-    height: 6,
-    backgroundColor: '#2563EB',
-    borderRadius: 3,
+    top: 135,
+    left: 177,
+    width: 110,
+    height: 7,
+    backgroundColor: '#10B981',
+    borderRadius: 4,
+    opacity: 0.9,
+  },
+  routeCurve: {
+    position: 'absolute',
+    top: 165,
+    left: 213,
+    width: 75,
+    height: 75,
+    borderColor: '#10B981',
+    borderLeftWidth: 7,
+    borderBottomWidth: 7,
+    borderRadius: 30,
+    transform: [{ rotate: '18deg' }],
+    opacity: 0.9,
+  },
+  pickupPin: {
+    position: 'absolute',
+    top: 118,
+    left: 260,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#064E3B',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    elevation: 5,
+  },
+  mapLabel: {
+    position: 'absolute',
+    top: 158,
+    left: 252,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    color: '#064E3B',
+    fontSize: 10,
+    fontWeight: '800',
+    paddingHorizontal: 7,
+    paddingVertical: 4,
   },
   riderPin: {
     position: 'absolute',
-    top: 260,
-    left: 162,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(37, 99, 235, 0.25)',
+    top: 250,
+    left: 158,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(16, 185, 129, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   riderInner: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#2563EB',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#10B981',
     justifyContent: 'center',
     alignItems: 'center',
     transform: [{ rotate: '45deg' }],
   },
+  riderLabel: {
+    position: 'absolute',
+    top: 288,
+    left: 142,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    color: '#064E3B',
+    fontSize: 9,
+    fontWeight: '800',
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+  },
   destinationPin: {
     position: 'absolute',
-    top: 118,
-    left: 265,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.primary,
+    top: 107,
+    left: 273,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#047857',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: colors.card,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    elevation: 6,
+  },
+  destinationLabel: {
+    position: 'absolute',
+    top: 146,
+    left: 260,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    color: '#064E3B',
+    fontSize: 9,
+    fontWeight: '800',
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+  },
+  liveRouteCard: {
+    position: 'absolute',
+    top: 54,
+    right: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+    elevation: 5,
+    shadowColor: '#064E3B',
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+  },
+  liveDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: '#10B981',
+    marginRight: 8,
+  },
+  liveRouteTitle: {
+    color: '#064E3B',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  liveRouteDetail: {
+    color: '#64748B',
+    fontSize: 9,
+    marginTop: 1,
   },
   topBar: {
     position: 'absolute',
@@ -399,15 +520,15 @@ const styles = StyleSheet.create({
   },
   bottomSheet: {
     backgroundColor: colors.card,
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     padding: 20,
-    paddingBottom: 32,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 10,
+    paddingBottom: 34,
+    shadowColor: '#064E3B',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 14,
+    elevation: 12,
   },
   etaHeaderRow: {
     flexDirection: 'row',
