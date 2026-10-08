@@ -4,7 +4,7 @@
  * 
  * SECURITY COMPLIANCE NOTE:
  * Full credit card number and CVV are NEVER stored in any database or logged.
- * Input validation includes Luhn check, expiry date verification, and CVV checks.
+ * Input validation includes card length, expiry date, and CVV checks.
  * 
  * CRUD OPERATIONS:
  * 1. CREATE: Posts simulated payment receipt (POST /api/payments)
@@ -30,26 +30,6 @@ import client from '../../api/client';
 import { useCustomer } from '../../context/CustomerContext';
 import CustomerBottomBar, { CUSTOMER_BOTTOM_BAR_HEIGHT } from '../../components/CustomerBottomBar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-// Luhn Algorithm validation for credit card numbers
-const isValidLuhn = (numStr) => {
-  const clean = numStr.replace(/\D/g, '');
-  if (clean.length < 13 || clean.length > 19) return false;
-
-  let sum = 0;
-  let doubleUp = false;
-
-  for (let i = clean.length - 1; i >= 0; i--) {
-    let digit = parseInt(clean.charAt(i), 10);
-    if (doubleUp) {
-      digit *= 2;
-      if (digit > 9) digit -= 9;
-    }
-    sum += digit;
-    doubleUp = !doubleUp;
-  }
-  return sum % 10 === 0;
-};
 
 // Expiry date validation (MM/YY)
 const isValidExpiry = (expiryStr) => {
@@ -141,8 +121,8 @@ const PaymentScreen = ({ navigation, route }) => {
   const handlePayment = async () => {
     if (paymentMethod === 'card') {
       const cleanNum = cardNumber.replace(/\s/g, '');
-      if (!isValidLuhn(cleanNum)) {
-        Alert.alert('Invalid Card Number', 'Please enter a valid credit or debit card number (Luhn verified).');
+      if (!/^\d{16}$/.test(cleanNum)) {
+        Alert.alert('Invalid Card Number', 'Card number must be 16 digits');
         return;
       }
       if (!isValidExpiry(cardExpiry)) {
