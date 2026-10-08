@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Alert,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -97,6 +98,16 @@ const LoginScreen = ({ navigation, route }) => {
         value={password}
       />
 
+      {!isOwner && !isDelivery ? (
+        <TouchableOpacity
+          accessibilityRole="button"
+          onPress={() => Alert.alert('Forgot password?', 'Password reset will be available soon.')}
+          style={styles.forgotLink}
+        >
+          <Text style={styles.forgotText}>Forgot password?</Text>
+        </TouchableOpacity>
+      ) : null}
+
       <PrimaryButton
         loading={loading}
         onPress={handleLogin}
@@ -147,6 +158,15 @@ const styles = StyleSheet.create({
     color: theme.colors.muted,
     fontSize: 12,
     marginBottom: 15,
+  },
+  forgotLink: {
+    alignSelf: 'flex-end',
+    marginTop: -3,
+    paddingVertical: 3,
+  },
+  forgotText: {
+    color: theme.colors.muted,
+    fontSize: 12,
   },
   primaryButton: {
     marginTop: 13,
