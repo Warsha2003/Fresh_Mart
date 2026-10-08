@@ -128,18 +128,38 @@ const OwnerDashboardScreen = ({ navigation }) => {
       >
         {/* Top Header */}
         <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.dateText}>{getFormattedDate()}</Text>
-            <Text style={styles.headerTitle}>Dashboard</Text>
+          <View style={styles.headerTitleGroup}>
+            {navigation.canGoBack() && (
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => navigation.goBack()}
+                accessibilityLabel="Go back"
+              >
+                <Ionicons name="arrow-back" size={20} color={colors.text} />
+              </TouchableOpacity>
+            )}
+            <View>
+              <Text style={styles.dateText}>{getFormattedDate()}</Text>
+              <Text style={styles.headerTitle}>Dashboard</Text>
+            </View>
           </View>
-          <TouchableOpacity
-            style={styles.bellButton}
-            onPress={() => Alert.alert('Notifications', 'You have 3 incoming orders waiting for confirmation.')}
-            accessibilityLabel="Notifications"
-          >
-            <Ionicons name="notifications-outline" size={24} color={colors.text} />
-            <View style={styles.bellDot} />
-          </TouchableOpacity>
+          <View style={styles.headerRightActions}>
+            <TouchableOpacity
+              style={styles.switchModeBtn}
+              onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('MainTabs'))}
+            >
+              <Ionicons name="cart-outline" size={16} color={colors.primary} />
+              <Text style={styles.switchModeText}>Customer View</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.bellButton}
+              onPress={() => Alert.alert('Notifications', 'You have 3 incoming orders waiting for confirmation.')}
+              accessibilityLabel="Notifications"
+            >
+              <Ionicons name="notifications-outline" size={22} color={colors.text} />
+              <View style={styles.bellDot} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {loading ? (
@@ -410,6 +430,42 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
+  },
+  headerTitleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  switchModeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 20,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  switchModeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.primaryDark,
   },
   dateText: {
     fontSize: 12,

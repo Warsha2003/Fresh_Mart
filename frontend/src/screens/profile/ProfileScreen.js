@@ -224,6 +224,14 @@ const ProfileScreen = ({ navigation }) => {
               onPress={() => Alert.alert('Settings', 'FreshMart Mobile v1.0.0 (HCI Assignment).')}
             />
             <MenuItem
+              icon="storefront-outline"
+              title="Shop Owner Portal"
+              subtitle="Manage inventory, orders & stats"
+              iconColor="#2563EB"
+              iconBackground="#EFF6FF"
+              onPress={() => navigation.navigate('OwnerTabs')}
+            />
+            <MenuItem
               icon="bicycle-outline"
               title="Delivery Partner Portal"
               subtitle="Manage and track rider deliveries"

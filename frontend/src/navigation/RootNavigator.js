@@ -61,110 +61,105 @@ const RootNavigator = () => {
   }
 
   const role = user?.role || 'customer';
+  const initialAppRoute =
+    role === 'delivery'
+      ? 'DeliveryTabs'
+      : role === 'owner'
+        ? 'OwnerTabs'
+        : 'MainTabs';
 
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
-        {!isAuthenticated ? (
-          // Auth Stack
-          <>
-            <Stack.Screen
-              name="SplashB"
-              component={SplashScreen}
-              initialParams={{ variant: 'B' }}
-            />
-            <Stack.Screen
-              name="SplashA"
-              component={SplashScreen}
-              initialParams={{ variant: 'A' }}
-            />
-            <Stack.Screen
-              name="SplashC"
-              component={SplashScreen}
-              initialParams={{ variant: 'C' }}
-            />
-            <Stack.Screen name="RoleSelect" component={RoleSelectScreen} />
-            <Stack.Screen
-              name="Login"
-              component={LoginScreen}
-              initialParams={{ role: 'customer' }}
-            />
-            <Stack.Screen
-              name="Register"
-              component={RegisterScreen}
-              initialParams={{ role: 'customer' }}
-            />
-            <Stack.Screen
-              name="DeliveryLogin"
-              component={LoginScreen}
-              initialParams={{ role: 'delivery' }}
-            />
-            <Stack.Screen
-              name="DeliveryRegister"
-              component={RegisterScreen}
-              initialParams={{ role: 'delivery' }}
-            />
-            <Stack.Screen
-              name="OwnerLogin"
-              component={LoginScreen}
-              initialParams={{ role: 'owner' }}
-            />
-            <Stack.Screen
-              name="OwnerRegister"
-              component={RegisterScreen}
-              initialParams={{ role: 'owner' }}
-            />
-          </>
-        ) : (
-          // Main Application Stack - Routes directly to role-specific entry point
-          <>
-            {role === 'delivery' ? (
-              <>
-                <Stack.Screen name="DeliveryTabs" component={DeliveryTabs} />
-                <Stack.Screen name="MainTabs" component={BottomTabs} />
-                <Stack.Screen name="OwnerDashboard" component={OwnerDashboardScreen} />
-              </>
-            ) : role === 'owner' ? (
-              <>
-                <Stack.Screen name="OwnerDashboard" component={OwnerDashboardScreen} />
-                <Stack.Screen name="MainTabs" component={BottomTabs} />
-                <Stack.Screen name="DeliveryTabs" component={DeliveryTabs} />
-              </>
-            ) : (
-              <>
-                <Stack.Screen name="MainTabs" component={BottomTabs} />
-                <Stack.Screen name="DeliveryTabs" component={DeliveryTabs} />
-                <Stack.Screen name="OwnerDashboard" component={OwnerDashboardScreen} />
-              </>
-            )}
-            <Stack.Screen name="TimeSlot" component={TimeSlotScreen} />
-            <Stack.Screen name="Payment" component={PaymentScreen} />
-            <Stack.Screen
-              name="PaymentSuccess"
-              component={PaymentSuccessScreen}
-              options={{ gestureEnabled: false }}
-            />
-            <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />
-            <Stack.Screen name="Orders" component={OrdersScreen} />
-            <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
-            <Stack.Screen name="Favourites" component={FavouritesScreen} />
-            <Stack.Screen name="Addresses" component={AddressesScreen} />
-            {/* Owner Screens */}
-<Stack.Screen name="OwnerDashboard" component={OwnerDashboardScreen} />
-<Stack.Screen name="OwnerOrderPrep" component={OwnerOrderPrepScreen} />
-<Stack.Screen name="OwnerManageSlots" component={OwnerManageSlotsScreen} />
-            <Stack.Screen name="Notifications" component={NotificationsScreen} />
+      {!isAuthenticated ? (
+        // Auth Stack
+        <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+          <Stack.Screen
+            name="SplashB"
+            component={SplashScreen}
+            initialParams={{ variant: 'B' }}
+          />
+          <Stack.Screen
+            name="SplashA"
+            component={SplashScreen}
+            initialParams={{ variant: 'A' }}
+          />
+          <Stack.Screen
+            name="SplashC"
+            component={SplashScreen}
+            initialParams={{ variant: 'C' }}
+          />
+          <Stack.Screen name="RoleSelect" component={RoleSelectScreen} />
+          <Stack.Screen
+            name="Login"
+            component={LoginScreen}
+            initialParams={{ role: 'customer' }}
+          />
+          <Stack.Screen
+            name="Register"
+            component={RegisterScreen}
+            initialParams={{ role: 'customer' }}
+          />
+          <Stack.Screen
+            name="DeliveryLogin"
+            component={LoginScreen}
+            initialParams={{ role: 'delivery' }}
+          />
+          <Stack.Screen
+            name="DeliveryRegister"
+            component={RegisterScreen}
+            initialParams={{ role: 'delivery' }}
+          />
+          <Stack.Screen
+            name="OwnerLogin"
+            component={LoginScreen}
+            initialParams={{ role: 'owner' }}
+          />
+          <Stack.Screen
+            name="OwnerRegister"
+            component={RegisterScreen}
+            initialParams={{ role: 'owner' }}
+          />
+        </Stack.Navigator>
+      ) : (
+        // Main Application Stack - Role-based entry point with all portal routes available
+        <Stack.Navigator
+          initialRouteName={initialAppRoute}
+          screenOptions={{ headerShown: false, animation: 'slide_from_right' }}
+        >
+          {/* Main Role Portals */}
+          <Stack.Screen name="MainTabs" component={BottomTabs} />
+          <Stack.Screen name="DeliveryTabs" component={DeliveryTabs} />
+          <Stack.Screen name="OwnerTabs" component={OwnerTabs} />
+          <Stack.Screen name="OwnerDashboard" component={OwnerDashboardScreen} />
 
-            {/* Delivery Partner Flow (Screens 21 to 25) */}
-            <Stack.Screen name="DeliveryDashboard" component={DeliveryDashboardScreen} />
-            <Stack.Screen name="DeliveryAlert" component={DeliveryAlertScreen} />
-            <Stack.Screen name="DeliveryOrderDetails" component={DeliveryOrderDetailsScreen} />
-            <Stack.Screen name="DeliveryMap" component={DeliveryMapScreen} />
-            <Stack.Screen name="DeliveryComplete" component={DeliveryCompleteScreen} />
-            <Stack.Screen name="ReportIssue" component={ReportIssueScreen} />
-          </>
-        )}
-      </Stack.Navigator>
+          {/* Checkout & Customer Scope */}
+          <Stack.Screen name="TimeSlot" component={TimeSlotScreen} />
+          <Stack.Screen name="Payment" component={PaymentScreen} />
+          <Stack.Screen
+            name="PaymentSuccess"
+            component={PaymentSuccessScreen}
+            options={{ gestureEnabled: false }}
+          />
+          <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />
+          <Stack.Screen name="Orders" component={OrdersScreen} />
+          <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
+          <Stack.Screen name="Favourites" component={FavouritesScreen} />
+          <Stack.Screen name="Addresses" component={AddressesScreen} />
+          <Stack.Screen name="Notifications" component={NotificationsScreen} />
+
+          {/* Owner Screens */}
+          <Stack.Screen name="OwnerOrderPrep" component={OwnerOrderPrepScreen} />
+          <Stack.Screen name="OwnerManageSlots" component={OwnerManageSlotsScreen} />
+
+          {/* Delivery Partner Screens */}
+          <Stack.Screen name="DeliveryDashboard" component={DeliveryDashboardScreen} />
+          <Stack.Screen name="DeliveryAlert" component={DeliveryAlertScreen} />
+          <Stack.Screen name="DeliveryOrderDetails" component={DeliveryOrderDetailsScreen} />
+          <Stack.Screen name="DeliveryMap" component={DeliveryMapScreen} />
+          <Stack.Screen name="DeliveryComplete" component={DeliveryCompleteScreen} />
+          <Stack.Screen name="ReportIssue" component={ReportIssueScreen} />
+        </Stack.Navigator>
+      )}
     </NavigationContainer>
   );
 };
