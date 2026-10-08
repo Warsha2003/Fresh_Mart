@@ -42,27 +42,35 @@ const DeliveryCompleteScreen = ({ navigation, route }) => {
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Confetti & Checkmark Graphic */}
+        {/* Success Celebration */}
         <View style={styles.celebrationContainer}>
-          <View style={styles.confettiRing}>
-            <View style={[styles.confettiDot, { top: 0, left: 25, backgroundColor: '#34D399' }]} />
-            <View style={[styles.confettiDot, { top: 15, right: 25, backgroundColor: '#FBBF24' }]} />
-            <View style={[styles.confettiDot, { bottom: 10, left: 15, backgroundColor: '#60A5FA' }]} />
-            <View style={[styles.confettiDot, { bottom: 20, right: 30, backgroundColor: '#F472B6' }]} />
-
-            <View style={styles.circleOuter}>
-              <View style={styles.circleInner}>
-                <Ionicons name="checkmark" size={44} color={colors.textInverse} />
-              </View>
-            </View>
+          <View style={styles.celebrationGlow} />
+          <View style={styles.successRing}>
+            <Ionicons name="checkmark" size={58} color={colors.textInverse} />
+          </View>
+          <View style={styles.successBadge}>
+            <Ionicons name="sparkles-outline" size={14} color="#FFFFFF" />
+            <Text style={styles.successBadgeText}>DELIVERY COMPLETE</Text>
           </View>
         </View>
 
         {/* Success Headings */}
         <Text style={styles.title}>Delivery Successful</Text>
         <Text style={styles.subtitle}>
-          Great job! Order {orderNumber} has been delivered.
+          Great job! Order {orderNumber} has been delivered safely and on time.
         </Text>
+
+        {/* Completion Summary */}
+        <View style={styles.completionSummary}>
+          <View style={styles.summaryIcon}>
+            <Ionicons name="time-outline" size={20} color="#10B981" />
+          </View>
+          <View style={styles.summaryContent}>
+            <Text style={styles.summaryLabel}>Delivered at</Text>
+            <Text style={styles.summaryValue}>{timeDelivered}</Text>
+          </View>
+          <Text style={styles.summaryCheck}>✓</Text>
+        </View>
 
         {/* Receipt Table Card */}
         <View style={styles.receiptCard}>
@@ -102,7 +110,7 @@ const DeliveryCompleteScreen = ({ navigation, route }) => {
 
           <TouchableOpacity
             style={styles.reportBtn}
-            onPress={() => Alert.alert('Report Issue', 'Issue reporting form opened for order ' + orderNumber)}
+            onPress={() => navigation.navigate('ReportIssue', { orderNumber })}
           >
             <Ionicons name="flag-outline" size={16} color={colors.textSecondary} style={{ marginRight: 6 }} />
             <Text style={styles.reportBtnText}>Report an Issue</Text>
@@ -116,77 +124,132 @@ const DeliveryCompleteScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#F1F9F4',
     paddingTop: 44,
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: 24,
+    padding: 22,
   },
   celebrationContainer: {
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 18,
+    marginTop: 8,
   },
-  confettiRing: {
-    width: 130,
-    height: 130,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  confettiDot: {
+  celebrationGlow: {
     position: 'absolute',
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  circleOuter: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    top: -70,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
     backgroundColor: '#D1FAE5',
-    justifyContent: 'center',
-    alignItems: 'center',
+    opacity: 0.7,
   },
-  circleInner: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
+  successRing: {
     alignItems: 'center',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 5,
+    backgroundColor: '#064E3B',
+    borderColor: '#D1FAE5',
+    borderRadius: 75,
+    borderWidth: 9,
+    height: 150,
+    justifyContent: 'center',
+    shadowColor: '#064E3B',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.22,
+    shadowRadius: 18,
+    width: 150,
+  },
+  successBadge: {
+    alignItems: 'center',
+    backgroundColor: '#10B981',
+    borderRadius: 14,
+    flexDirection: 'row',
+    marginTop: 16,
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+  },
+  successBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.7,
+    marginLeft: 6,
   },
   title: {
-    fontSize: 24,
+    color: '#064E3B',
+    fontSize: 25,
     fontWeight: '800',
-    color: colors.text,
     textAlign: 'center',
   },
   subtitle: {
+    color: '#64748B',
     fontSize: 14,
-    color: colors.textSecondary,
+    lineHeight: 20,
+    marginBottom: 20,
+    marginTop: 7,
     textAlign: 'center',
-    marginTop: 6,
-    marginBottom: 24,
+  },
+  completionSummary: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#B7EBCF',
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: 'row',
+    marginBottom: 16,
+    padding: 14,
+    shadowColor: '#064E3B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+  },
+  summaryIcon: {
+    alignItems: 'center',
+    backgroundColor: '#DCFCE7',
+    borderRadius: 14,
+    height: 42,
+    justifyContent: 'center',
+    width: 42,
+  },
+  summaryContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  summaryLabel: {
+    color: '#64748B',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  summaryValue: {
+    color: '#1E293B',
+    fontSize: 15,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  summaryCheck: {
+    alignItems: 'center',
+    backgroundColor: '#10B981',
+    borderRadius: 18,
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+    height: 36,
+    justifyContent: 'center',
+    width: 36,
   },
   receiptCard: {
     backgroundColor: colors.card,
-    borderRadius: 18,
-    padding: 18,
+    borderColor: '#DCEBE3',
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
-    marginBottom: 28,
+    elevation: 4,
+    marginBottom: 22,
+    padding: 18,
+    shadowColor: '#064E3B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
   },
   receiptRow: {
     flexDirection: 'row',
@@ -199,23 +262,24 @@ const styles = StyleSheet.create({
     backgroundColor: colors.borderLight,
   },
   receiptLabel: {
-    fontSize: 14,
-    color: colors.textSecondary,
+    color: '#64748B',
+    fontSize: 13,
+    fontWeight: '600',
   },
   receiptValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
+    color: '#334155',
+    fontSize: 13,
+    fontWeight: '700',
   },
   receiptValueBold: {
-    fontSize: 15,
+    color: '#064E3B',
+    fontSize: 14,
     fontWeight: '800',
-    color: colors.text,
   },
   receiptAmount: {
-    fontSize: 17,
+    color: '#047857',
+    fontSize: 18,
     fontWeight: '800',
-    color: colors.primary,
   },
   actionsContainer: {
     marginTop: 4,

@@ -42,6 +42,7 @@ import DeliveryAlertScreen from '../screens/delivery/DeliveryAlertScreen';
 import DeliveryOrderDetailsScreen from '../screens/delivery/DeliveryOrderDetailsScreen';
 import DeliveryMapScreen from '../screens/delivery/DeliveryMapScreen';
 import DeliveryCompleteScreen from '../screens/delivery/DeliveryCompleteScreen';
+import ReportIssueScreen from '../screens/delivery/ReportIssueScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -141,6 +142,7 @@ const RootNavigator = () => {
             <Stack.Screen name="DeliveryOrderDetails" component={DeliveryOrderDetailsScreen} />
             <Stack.Screen name="DeliveryMap" component={DeliveryMapScreen} />
             <Stack.Screen name="DeliveryComplete" component={DeliveryCompleteScreen} />
+            <Stack.Screen name="ReportIssue" component={ReportIssueScreen} />
           </>
         )}
       </Stack.Navigator>
