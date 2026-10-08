@@ -27,12 +27,12 @@ const DeliveryDashboardScreen = ({ navigation }) => {
   const [loadError, setLoadError] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const handleBackToLogin = async () => {
-    await logout();
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'DeliveryLogin' }],
-    });
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('MainTabs');
+    }
   };
 
   useFocusEffect(
@@ -89,8 +89,8 @@ const DeliveryDashboardScreen = ({ navigation }) => {
         <View style={styles.headerLeft}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={handleBackToLogin}
-            accessibilityLabel="Back to delivery login"
+            onPress={handleBack}
+            accessibilityLabel="Back to previous screen"
           >
             <Ionicons name="arrow-back" size={19} color={colors.textInverse} />
           </TouchableOpacity>

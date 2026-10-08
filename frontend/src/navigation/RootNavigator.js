@@ -116,11 +116,23 @@ const RootNavigator = () => {
           // Main Application Stack - Routes directly to role-specific entry point
           <>
             {role === 'delivery' ? (
-              <Stack.Screen name="DeliveryTabs" component={DeliveryTabs} />
+              <>
+                <Stack.Screen name="DeliveryTabs" component={DeliveryTabs} />
+                <Stack.Screen name="MainTabs" component={BottomTabs} />
+                <Stack.Screen name="OwnerDashboard" component={OwnerDashboardScreen} />
+              </>
             ) : role === 'owner' ? (
-              <Stack.Screen name="OwnerDashboard" component={OwnerDashboardScreen} />
+              <>
+                <Stack.Screen name="OwnerDashboard" component={OwnerDashboardScreen} />
+                <Stack.Screen name="MainTabs" component={BottomTabs} />
+                <Stack.Screen name="DeliveryTabs" component={DeliveryTabs} />
+              </>
             ) : (
-              <Stack.Screen name="MainTabs" component={BottomTabs} />
+              <>
+                <Stack.Screen name="MainTabs" component={BottomTabs} />
+                <Stack.Screen name="DeliveryTabs" component={DeliveryTabs} />
+                <Stack.Screen name="OwnerDashboard" component={OwnerDashboardScreen} />
+              </>
             )}
             <Stack.Screen name="TimeSlot" component={TimeSlotScreen} />
             <Stack.Screen name="Payment" component={PaymentScreen} />
