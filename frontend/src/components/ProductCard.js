@@ -49,7 +49,7 @@ const ProductCard = ({ product, navigation }) => {
         activeOpacity={0.86}
       >
         <View style={styles.imageWrap}>
-          <Image source={getProductAsset(product.imageKey)} style={styles.image} resizeMode="cover" />
+          <Image source={getProductAsset(product.imageKey, product.imageUrl)} style={styles.image} resizeMode="cover" />
           <TouchableOpacity
             accessibilityRole="button"
             accessibilityLabel={isFavourite(productId) ? 'Remove from favourites' : 'Add to favourites'}

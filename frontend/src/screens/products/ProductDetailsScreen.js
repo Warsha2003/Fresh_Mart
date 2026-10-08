@@ -88,7 +88,7 @@ const ProductDetailsScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
         <View style={styles.imageBox}>
-          <Image source={getProductAsset(product.imageKey)} style={styles.image} resizeMode="cover" />
+          <Image source={getProductAsset(product.imageKey, product.imageUrl)} style={styles.image} resizeMode="cover" />
         </View>
         <Text style={styles.category}>{product.category}</Text>
         <Text style={styles.name}>{product.name}</Text>

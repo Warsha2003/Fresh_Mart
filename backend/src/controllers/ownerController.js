@@ -28,6 +28,7 @@ const normalizeProduct = (p) => {
     packSize: p.packSize,
     unitPrice: p.unitPrice,
     imageKey: p.imageKey || 'vegetables',
+    imageUrl: p.imageUrl || '',
     stock: stock,
     lowStockThreshold: threshold,
     stockStatus,
@@ -455,12 +456,19 @@ const getInventoryProducts = async (req, res, next) => {
 
 const createProduct = async (req, res, next) => {
   try {
-    const { name, category, packSize, unitPrice, stock, lowStockThreshold, description, imageKey } = req.body;
+    const { name, category, packSize, unitPrice, stock, lowStockThreshold, description, imageKey, imageUrl } = req.body;
 
     if (!name || !category || unitPrice === undefined || stock === undefined) {
       return res.status(400).json({
         success: false,
         message: 'Name, category, unit price, and stock quantity are required.',
+      });
+    }
+
+    if (imageUrl && !isValidProductImageUrl(imageUrl)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Product image must be a valid HTTP or HTTPS URL.',
       });
     }
 
@@ -482,6 +490,7 @@ const createProduct = async (req, res, next) => {
       lowStockThreshold: lowStockThreshold !== undefined ? Number(lowStockThreshold) : 5,
       description: description ? description.trim() : '',
       imageKey: imageKey || 'vegetables',
+      imageUrl: imageUrl ? imageUrl.trim() : '',
       isActive: true,
     });
 
@@ -497,7 +506,14 @@ const createProduct = async (req, res, next) => {
 
 const updateProduct = async (req, res, next) => {
   try {
-    const { name, category, packSize, unitPrice, stock, lowStockThreshold, description, imageKey } = req.body;
+    const { name, category, packSize, unitPrice, stock, lowStockThreshold, description, imageKey, imageUrl } = req.body;
+
+    if (imageUrl !== undefined && imageUrl !== '' && !isValidProductImageUrl(imageUrl)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Product image must be a valid HTTP or HTTPS URL.',
+      });
+    }
 
     const product = await Product.findById(req.params.id);
     if (!product) {
@@ -512,6 +528,7 @@ const updateProduct = async (req, res, next) => {
     if (lowStockThreshold !== undefined) product.lowStockThreshold = Number(lowStockThreshold);
     if (description !== undefined) product.description = description.trim();
     if (imageKey) product.imageKey = imageKey;
+    if (imageUrl !== undefined) product.imageUrl = imageUrl.trim();
 
     await product.save();
 
@@ -522,6 +539,15 @@ const updateProduct = async (req, res, next) => {
     });
   } catch (error) {
     next(error);
+  }
+};
+
+const isValidProductImageUrl = (value) => {
+  try {
+    const url = new URL(value.trim());
+    return (url.protocol === 'http:' || url.protocol === 'https:') && value.length <= 2048;
+  } catch {
+    return false;
   }
 };
 

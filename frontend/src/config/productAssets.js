@@ -17,5 +17,7 @@ export const productAssets = {
   dairy: require('../../assets/customer/diary.jpeg'),
 };
 
-export const getProductAsset = (imageKey) =>
-  productAssets[imageKey] || productAssets['vegetable-basket'];
+export const getProductAsset = (imageKey, imageUrl) => {
+  if (imageUrl) return { uri: imageUrl };
+  return productAssets[imageKey] || productAssets['vegetable-basket'];
+};

@@ -149,7 +149,7 @@ const CartScreen = ({ navigation }) => {
                     style={styles.productImageBox}
                     onPress={() => navigation.navigate('ProductDetails', { productId })}
                   >
-                    <Image source={getProductAsset(item.imageKey)} style={styles.productImage} resizeMode="cover" />
+                    <Image source={getProductAsset(item.imageKey, item.imageUrl)} style={styles.productImage} resizeMode="cover" />
                   </TouchableOpacity>
                   <View style={styles.itemInfo}>
                     <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>

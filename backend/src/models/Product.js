@@ -21,8 +21,8 @@ const productSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ['Vegetables', 'Grains', 'Oils', 'Dairy', 'Bundles'],
       required: [true, 'Product category is required.'],
+      trim: true,
       index: true,
     },
     packSize: {
@@ -39,6 +39,12 @@ const productSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Image key is required.'],
       trim: true,
+    },
+    imageUrl: {
+      type: String,
+      trim: true,
+      default: '',
+      maxlength: [2048, 'Product image URL is too long.'],
     },
     stock: {
       type: Number,

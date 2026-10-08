@@ -13,6 +13,7 @@ const normalizeProduct = (product) => ({
   packSize: product.packSize,
   unitPrice: product.unitPrice,
   imageKey: product.imageKey,
+  imageUrl: product.imageUrl || '',
   stock: product.stock,
   lowStockThreshold: product.lowStockThreshold,
   isLowStock: product.stock > 0 && product.stock <= product.lowStockThreshold,

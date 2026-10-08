@@ -40,11 +40,13 @@ const OwnerInventoryScreen = ({ navigation }) => {
   const [editingProduct, setEditingProduct] = useState(null); // null = add mode, object = edit mode
   const [formName, setFormName] = useState('');
   const [formCategory, setFormCategory] = useState('Vegetables');
+  const [customCategory, setCustomCategory] = useState('');
   const [formPrice, setFormPrice] = useState('');
   const [formStock, setFormStock] = useState('');
   const [formPackSize, setFormPackSize] = useState('1 unit');
   const [formThreshold, setFormThreshold] = useState('5');
   const [formImageKey, setFormImageKey] = useState('vegetables');
+  const [formImageUrl, setFormImageUrl] = useState('');
   const [saving, setSaving] = useState(false);
 
   const fetchProducts = useCallback(async () => {
@@ -79,11 +81,13 @@ const OwnerInventoryScreen = ({ navigation }) => {
     setEditingProduct(null);
     setFormName('');
     setFormCategory('Vegetables');
+    setCustomCategory('');
     setFormPrice('');
     setFormStock('');
     setFormPackSize('1 unit');
     setFormThreshold('5');
     setFormImageKey('vegetables');
+    setFormImageUrl('');
     setModalVisible(true);
   };
 
@@ -91,17 +95,24 @@ const OwnerInventoryScreen = ({ navigation }) => {
     setEditingProduct(product);
     setFormName(product.name || '');
     setFormCategory(product.category || 'Vegetables');
+    setCustomCategory('');
     setFormPrice(String(product.unitPrice || ''));
     setFormStock(String(product.stock !== undefined ? product.stock : ''));
     setFormPackSize(product.packSize || '1 unit');
     setFormThreshold(String(product.lowStockThreshold || 5));
     setFormImageKey(product.imageKey || 'vegetables');
+    setFormImageUrl(product.imageUrl || '');
     setModalVisible(true);
   };
 
   const handleSaveProduct = async () => {
-    if (!formName.trim() || !formPrice || formStock === '') {
+    const category = customCategory.trim() || formCategory.trim();
+    if (!formName.trim() || !category || !formPrice || formStock === '') {
       Alert.alert('Required Fields', 'Please enter product name, unit price, and stock count.');
+      return;
+    }
+    if (formImageUrl.trim() && !/^https?:\/\/\S+$/i.test(formImageUrl.trim())) {
+      Alert.alert('Invalid Image URL', 'Enter a valid HTTP or HTTPS image URL.');
       return;
     }
 
@@ -109,12 +120,13 @@ const OwnerInventoryScreen = ({ navigation }) => {
       setSaving(true);
       const payload = {
         name: formName.trim(),
-        category: formCategory,
+        category,
         unitPrice: Number(formPrice),
         stock: Number(formStock),
         packSize: formPackSize.trim() || '1 unit',
         lowStockThreshold: Number(formThreshold) || 5,
         imageKey: formImageKey,
+        imageUrl: formImageUrl.trim(),
       };
 
       if (editingProduct) {
@@ -275,7 +287,7 @@ const OwnerInventoryScreen = ({ navigation }) => {
                   {/* Thumbnail Image */}
                   <View style={styles.imageWrap}>
                     <Image
-                      source={getProductAsset(item.imageKey)}
+                      source={getProductAsset(item.imageKey, item.imageUrl)}
                       style={styles.productImage}
                       resizeMode="cover"
                     />
@@ -354,7 +366,10 @@ const OwnerInventoryScreen = ({ navigation }) => {
                       styles.categoryPill,
                       formCategory === cat && styles.categoryPillActive,
                     ]}
-                    onPress={() => setFormCategory(cat)}
+                    onPress={() => {
+                      setFormCategory(cat);
+                      setCustomCategory('');
+                    }}
                   >
                     <Text
                       style={[
@@ -367,6 +382,30 @@ const OwnerInventoryScreen = ({ navigation }) => {
                   </TouchableOpacity>
                 ))}
               </View>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Or add a new category"
+                value={customCategory}
+                onChangeText={setCustomCategory}
+                maxLength={40}
+              />
+
+              <Text style={styles.fieldLabel}>Product Image URL (optional)</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="https://example.com/product.jpg"
+                value={formImageUrl}
+                onChangeText={setFormImageUrl}
+                autoCapitalize="none"
+                keyboardType="url"
+              />
+              {formImageUrl.trim() ? (
+                <Image
+                  source={getProductAsset(formImageKey, formImageUrl.trim())}
+                  style={styles.imagePreview}
+                  resizeMode="cover"
+                />
+              ) : null}
 
               <View style={styles.twoCol}>
                 <View style={styles.colHalf}>
@@ -695,6 +734,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.text,
     backgroundColor: '#F8FAF8',
+  },
+  imagePreview: {
+    width: 96,
+    height: 96,
+    borderRadius: 12,
+    marginTop: 10,
+    backgroundColor: '#F1F5F9',
   },
   categoryPills: {
     flexDirection: 'row',

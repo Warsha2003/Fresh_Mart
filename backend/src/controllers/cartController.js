@@ -42,6 +42,7 @@ const serializeCart = (cart) => {
         packSize: product.packSize,
         unitPrice: product.unitPrice,
         imageKey: product.imageKey,
+        imageUrl: product.imageUrl || '',
         stock: product.stock,
         isLowStock: product.stock > 0 && product.stock <= product.lowStockThreshold,
         isOutOfStock: product.stock <= 0,

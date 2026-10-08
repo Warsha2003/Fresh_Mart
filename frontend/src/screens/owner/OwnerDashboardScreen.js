@@ -49,9 +49,11 @@ const OwnerDashboardScreen = ({ navigation }) => {
   const [newProductModalVisible, setNewProductModalVisible] = useState(false);
   const [productName, setProductName] = useState('');
   const [productCategory, setProductCategory] = useState('Vegetables');
+  const [customProductCategory, setCustomProductCategory] = useState('');
   const [productPrice, setProductPrice] = useState('');
   const [productStock, setProductStock] = useState('');
   const [productPackSize, setProductPackSize] = useState('1kg');
+  const [productImageUrl, setProductImageUrl] = useState('');
   const [savingProduct, setSavingProduct] = useState(false);
 
   // Fetch real dashboard stats from backend
@@ -80,8 +82,13 @@ const OwnerDashboardScreen = ({ navigation }) => {
 
   // Create Product Quick Action Handler
   const handleCreateProduct = async () => {
-    if (!productName.trim() || !productPrice || !productStock) {
-      Alert.alert('Required Fields', 'Please enter product name, unit price, and stock count.');
+    const category = customProductCategory.trim() || productCategory.trim();
+    if (!productName.trim() || !category || !productPrice || productStock === '') {
+      Alert.alert('Required Fields', 'Please enter product name, category, unit price, and stock count.');
+      return;
+    }
+    if (productImageUrl.trim() && !/^https?:\/\/\S+$/i.test(productImageUrl.trim())) {
+      Alert.alert('Invalid Image URL', 'Enter a valid HTTP or HTTPS image URL.');
       return;
     }
 
@@ -89,12 +96,13 @@ const OwnerDashboardScreen = ({ navigation }) => {
       setSavingProduct(true);
       const payload = {
         name: productName.trim(),
-        category: productCategory,
+        category,
         packSize: productPackSize.trim() || '1 unit',
         unitPrice: Number(productPrice),
         stock: Number(productStock),
         lowStockThreshold: 5,
         imageKey: 'vegetables',
+        imageUrl: productImageUrl.trim(),
       };
 
       const response = await client.post('/owner/products', payload);
@@ -103,6 +111,8 @@ const OwnerDashboardScreen = ({ navigation }) => {
         setProductName('');
         setProductPrice('');
         setProductStock('');
+        setCustomProductCategory('');
+        setProductImageUrl('');
         setNewProductModalVisible(false);
         fetchDashboardData();
       }
@@ -351,7 +361,10 @@ const OwnerDashboardScreen = ({ navigation }) => {
                       styles.categoryPill,
                       productCategory === cat && styles.categoryPillActive,
                     ]}
-                    onPress={() => setProductCategory(cat)}
+                    onPress={() => {
+                      setProductCategory(cat);
+                      setCustomProductCategory('');
+                    }}
                   >
                     <Text
                       style={[
@@ -364,6 +377,40 @@ const OwnerDashboardScreen = ({ navigation }) => {
                   </TouchableOpacity>
                 ))}
               </View>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Or add a new category"
+                value={customProductCategory}
+                onChangeText={setCustomProductCategory}
+                maxLength={40}
+              />
+
+              <Text style={styles.fieldLabel}>Product Image URL (optional)</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="https://example.com/product.jpg"
+                value={productImageUrl}
+                onChangeText={setProductImageUrl}
+                autoCapitalize="none"
+                keyboardType="url"
+              />
+              <TextInput
+                style={styles.textInput}
+                placeholder="Or add a new category"
+                value={customProductCategory}
+                onChangeText={setCustomProductCategory}
+                maxLength={40}
+              />
+
+              <Text style={styles.fieldLabel}>Product Image URL (optional)</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="https://example.com/product.jpg"
+                value={productImageUrl}
+                onChangeText={setProductImageUrl}
+                autoCapitalize="none"
+                keyboardType="url"
+              />
 
               <View style={styles.twoCol}>
                 <View style={styles.colHalf}>
