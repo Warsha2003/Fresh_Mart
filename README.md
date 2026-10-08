@@ -66,3 +66,19 @@ cd frontend
 npm install
 npx expo start --clear --tunnel
 ```
+
+---
+
+## Shop Owner Setup
+
+Run these in the backend folder to seed the owner demo data and start the API:
+
+```bash
+cd backend
+npm install
+npm run seed:owner   # Seeds sample owner account, stock and demo orders
+npm run dev
+```
+
+- Owner API is mounted at `/api/owner`.
+- Full architecture notes and test cases: [docs/owner-notes.md](docs/owner-notes.md)
