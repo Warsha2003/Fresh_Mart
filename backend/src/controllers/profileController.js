@@ -6,6 +6,8 @@
 const User = require('../models/User');
 const Address = require('../models/Address');
 const Cart = require('../models/Cart');
+const Favourite = require('../models/Favourite');
+const Notification = require('../models/Notification');
 const bcrypt = require('bcryptjs');
 
 // @desc    Get current user profile, stats, and addresses
@@ -324,10 +326,40 @@ const deleteAddress = async (req, res, next) => {
   }
 };
 
+// @desc    Delete current user account and associated customer data
+// @route   DELETE /api/profile
+// @access  Private
+const deleteAccount = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+
+    const user = await User.findByIdAndDelete(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    // Clean up associated user records
+    await Promise.all([
+      Address.deleteMany({ user: userId }),
+      Cart.deleteMany({ user: userId }),
+      Favourite.deleteMany({ user: userId }),
+      Notification.deleteMany({ user: userId }),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: 'Account deleted successfully.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getProfile,
   updateProfile,
   changePassword,
+  deleteAccount,
   getAddresses,
   createAddress,
   updateAddress,

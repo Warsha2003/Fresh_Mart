@@ -116,6 +116,11 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  const deleteAccount = async () => {
+    await client.delete('/profile');
+    await logout();
+  };
+
   const updateUserData = (updatedFields) => {
     setUser((prev) => {
       const merged = { ...prev, ...updatedFields };
@@ -134,6 +139,7 @@ export const AuthProvider = ({ children }) => {
         login,
         register,
         logout,
+        deleteAccount,
         updateUserData,
       }}
     >

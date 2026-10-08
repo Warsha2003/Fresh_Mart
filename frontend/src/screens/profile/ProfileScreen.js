@@ -20,7 +20,7 @@ import client from '../../api/client';
 import { colors } from '../../theme/colors';
 
 const ProfileScreen = ({ navigation }) => {
-  const { user, logout, updateUserData } = useAuth();
+  const { user, logout, deleteAccount, updateUserData } = useAuth();
   const { addresses, favourites, notificationUnreadCount } = useCustomer();
   const [profile, setProfile] = useState(user);
   const [loading, setLoading] = useState(false);
@@ -34,6 +34,32 @@ const ProfileScreen = ({ navigation }) => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const confirmDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'Are you sure you want to permanently delete your account? This action cannot be undone and will delete your profile, saved addresses, cart items, and favourites.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Permanently',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setDeleting(true);
+              await deleteAccount();
+              Alert.alert('Account Deleted', 'Your account has been deleted successfully.');
+            } catch (error) {
+              Alert.alert('Unable to delete account', error.message || 'Please try again later.');
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   // Hide parent BottomTabs when a bottom sheet modal is open
   useEffect(() => {
@@ -215,8 +241,25 @@ const ProfileScreen = ({ navigation }) => {
               { text: 'Log out', style: 'destructive', onPress: logout },
             ])}
           >
-            <Ionicons name="log-out-outline" size={19} color={colors.danger} />
+            <Ionicons name="log-out-outline" size={19} color={colors.textSecondary} />
             <Text style={styles.logoutText}>Log out</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.deleteAccountButton}
+            onPress={confirmDeleteAccount}
+            disabled={deleting}
+            accessibilityRole="button"
+            accessibilityLabel="Delete user account"
+          >
+            {deleting ? (
+              <ActivityIndicator size="small" color={colors.danger} />
+            ) : (
+              <>
+                <Ionicons name="trash-outline" size={18} color={colors.danger} />
+                <Text style={styles.deleteAccountText}>Delete Account</Text>
+              </>
+            )}
           </TouchableOpacity>
         </ScrollView>
       )}
@@ -316,7 +359,7 @@ const styles = StyleSheet.create({
   container: { backgroundColor: colors.background, flex: 1 },
   header: { alignItems: 'center', backgroundColor: colors.card, borderBottomColor: colors.borderLight, borderBottomWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 50, paddingBottom: 14 },
   headerTitle: { color: colors.text, fontSize: 20, fontWeight: '800' },
-  content: { padding: 16, paddingBottom: 30 },
+  content: { padding: 16, paddingBottom: 68 },
   center: { alignItems: 'center', flex: 1, justifyContent: 'center' },
   userCard: { alignItems: 'center', backgroundColor: colors.card, borderColor: colors.border, borderRadius: 17, borderWidth: 1, flexDirection: 'row', padding: 16 },
   avatar: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 29, height: 58, justifyContent: 'center', width: 58 },
@@ -338,8 +381,10 @@ const styles = StyleSheet.create({
   menuInfo: { flex: 1, marginLeft: 11 },
   menuTitle: { color: colors.text, fontSize: 14, fontWeight: '700' },
   menuSubtitle: { color: colors.textSecondary, fontSize: 11, marginTop: 3 },
-  logoutButton: { alignItems: 'center', backgroundColor: colors.dangerLight, borderRadius: 13, flexDirection: 'row', height: 48, justifyContent: 'center', marginTop: 18 },
-  logoutText: { color: colors.danger, fontSize: 14, fontWeight: '800', marginLeft: 8 },
+  logoutButton: { alignItems: 'center', backgroundColor: colors.card, borderColor: colors.border, borderRadius: 13, borderWidth: 1, flexDirection: 'row', height: 48, justifyContent: 'center', marginTop: 18 },
+  logoutText: { color: colors.text, fontSize: 14, fontWeight: '700', marginLeft: 8 },
+  deleteAccountButton: { alignItems: 'center', backgroundColor: '#FEF2F2', borderColor: '#FCA5A5', borderRadius: 13, borderWidth: 1, flexDirection: 'row', gap: 8, height: 48, justifyContent: 'center', marginTop: 10 },
+  deleteAccountText: { color: colors.danger, fontSize: 14, fontWeight: '800' },
   modalOverlay: { backgroundColor: 'rgba(0,0,0,0.5)', flex: 1, justifyContent: 'flex-end' },
   backdropTouchable: { ...StyleSheet.absoluteFillObject },
   modalCard: {
