@@ -42,7 +42,7 @@ const DeliveryCompleteScreen = ({ navigation, route }) => {
     <View style={styles.container}>
       <ScreenHeader
         title="Delivery Complete"
-        onBack={() => navigateRoot('DeliveryDashboard')}
+        onBack={() => navigateRoot('DeliveryTabs', { screen: 'Dashboard' })}
         rightAction={
           <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Ionicons name="ellipsis-horizontal" size={20} color={colors.text} />
@@ -113,7 +113,7 @@ const DeliveryCompleteScreen = ({ navigation, route }) => {
         <View style={styles.actionsContainer}>
           <AppButton
             title="Back to Dashboard"
-            onPress={() => navigateRoot('DeliveryDashboard')}
+            onPress={() => navigateRoot('DeliveryTabs', { screen: 'Dashboard' })}
             icon={<Ionicons name="speedometer-outline" size={18} color={colors.textInverse} />}
           />
 
