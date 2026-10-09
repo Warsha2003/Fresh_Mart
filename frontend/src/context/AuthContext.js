@@ -3,6 +3,7 @@
  * Manages global auth state, persistent login session in AsyncStorage, and login/register/logout actions.
  */
 import React, { createContext, useState, useEffect, useContext } from 'react';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import client from '../api/client';
 
@@ -20,6 +21,8 @@ export const AuthProvider = ({ children }) => {
 
   const loadStoredSession = async () => {
     try {
+      if (Platform.OS === 'web') return;
+
       const storedToken = await AsyncStorage.getItem('@freshmart_token');
       const storedUser = await AsyncStorage.getItem('@freshmart_user');
 

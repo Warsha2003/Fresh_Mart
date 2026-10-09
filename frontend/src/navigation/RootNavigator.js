@@ -72,7 +72,11 @@ const RootNavigator = () => {
     <NavigationContainer>
       {!isAuthenticated ? (
         // Auth Stack
-        <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+        <Stack.Navigator
+          key="signed-out"
+          initialRouteName="RoleSelect"
+          screenOptions={{ headerShown: false, animation: 'slide_from_right' }}
+        >
           <Stack.Screen
             name="SplashB"
             component={SplashScreen}
@@ -123,6 +127,7 @@ const RootNavigator = () => {
       ) : (
         // Main Application Stack - Role-based entry point with all portal routes available
         <Stack.Navigator
+          key={`signed-in-${role}`}
           initialRouteName={initialAppRoute}
           screenOptions={{ headerShown: false, animation: 'slide_from_right' }}
         >
